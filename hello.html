@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ccNetViz example</title>
+  <style type="text/css">
+    #container {
+      width: 500px;
+      height: 500px;
+    }
+  </style>
+  <script src="dist/ccNetViz.js"></script>
+</head>
+<body>
+  <canvas id="container"/>
+  <script>
+    var graph = new ccNetViz(document.getElementById('container'), {
+      styles :  {
+          background: { color: "rgb(0, 0, 0)" },  //background color of canvas, default: "rgb(255, 255, 255)"
+          node: { //predefined style
+            minSize: 8,   //minimum size of node representation in pixels, default: 6
+            maxSize: 16,    //maximum size of node representation in pixels, default: 16
+            color: "rgb(255, 0, 0)",  //node color (combined with node image), default: "rgb(255, 255, 255)"
+            texture: "images/circle.png",   //node image
+            label: {
+              hideSize: 16,   //minimum size (height) for the label to be displayed
+              color: "rgb(120, 0, 0)",  //label color, default: "rgb(120, 120, 120)"
+              font: "15px Arial, Helvetica, sans-serif" //label font, default: "11px Arial, Helvetica, sans-serif"
+            }
+          },
+          edge: {   //predefined style
+            width: 2,   //edge width in pixels, default: 1
+            color: "rgb(86, 86, 86)",   //edge color, default: "rgb(204, 204, 204)"
+            arrow: {
+              minSize: 6,   //minimum size of arrow in pixels, default: 6
+              maxSize: 12,  //maximum size of arrow, default: 12
+              aspect: 2,  //aspect of arrow image, default: 1
+              texture: "images/arrow.png",  //arrow image
+              hideSize: 2   //minimum size of arrow to be displayed
+            }
+          },
+          nodeBlue: {   //custom style
+            color: "rgb(0, 0, 255)"
+          },
+          nodeGiant: {  //custom style
+            minSize: 16
+          },
+          nodeWithSmallBlueLabel: {   //custom style
+            label: {
+              color: "rgb(0, 0, 255)",
+              font: "11px Arial, Helvetica, sans-serif"
+            }
+          },
+          edgeWideYellow: {   //custom style
+            width: 4,
+            color: "rgb(255, 255, 0)"
+          },
+          edgeWithWhiteArrow: {   //custom style
+            arrow: {
+              color: "rgb(255, 255, 255)"
+            }
+          }
+      }
+    });
+    var nodes = [
+      { label: "Hello" },
+      { label: "World" },
+      { label: "!" }
+    ];
+    var edges = [
+      { source: nodes[0], target: nodes[1] },
+      { source: nodes[1], target: nodes[2] },
+      { source: nodes[2], target: nodes[1] }
+    ];
+    graph.set(nodes, edges, "force");
+    graph.draw();
+  </script>
+</body>
+</html>
