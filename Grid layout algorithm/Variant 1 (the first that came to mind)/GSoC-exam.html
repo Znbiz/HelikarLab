@@ -49,7 +49,7 @@
                         var result =Grid(res,0);
                         var sc1 = result[0];
                         var t1 = result[1];
-                        $(".result").append("<tr><td>Name: "+graph[i]+"</td><td>Time: "+t1+"</td><td>Score: "+sc1+"</td><td><input type='button' value='Drawing' onclick='graph_drawing("+i+")'/></td></tr>");
+                        $(".result").append("<tr><td>Name: "+graph[i]+"</td><td>Time: "+t1.toFixed(2)+"</td><td>Score: "+sc1.toFixed(2)+"</td><td><input type='button' value='Drawing' onclick='graph_drawing("+i+")'/></td></tr>");
                     }
             });
          }
