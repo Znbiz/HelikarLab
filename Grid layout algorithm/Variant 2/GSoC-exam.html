@@ -26,9 +26,9 @@
 
     <script type="text/javascript">
         //use this variable to switch between our testing graphs
-        var graph = ["Bronchiseptica", "CD4", "EGFR", "ErbB", "FA-BRCA", 'Glucose',"HGF", "IL-1", "IL-6","Influenza", "T-Cell-Receptor", "T-Cell", "T-LGL-2011","T-LGL", "Yeast-Apoptosis", "circle-10","circle-100","circle-1000", "drosophila","fibroblast","graph-10-1","graph-10-2","graph-10-3","graph-100-1","graph-100-2","graph-100-3","graph-1000-1","graph-1000-2","graph-1000-3","line-10","line-100", "line-1000","macrophage","star-10","star-100","star-1000"];
+        // var graph = ["Bronchiseptica", "CD4", "EGFR", "ErbB", "FA-BRCA", 'Glucose',"HGF", "IL-1", "IL-6","Influenza", "T-Cell-Receptor", "T-Cell", "T-LGL-2011","T-LGL", "Yeast-Apoptosis", "circle-10","circle-100","circle-1000", "drosophila","fibroblast","graph-10-1","graph-10-2","graph-10-3","graph-100-1","graph-100-2","graph-100-3","graph-1000-1","graph-1000-2","graph-1000-3","line-10","line-100", "line-1000","macrophage","star-10","star-100","star-1000"]; 
 
-        // var graph = ["line-10"];
+        var graph = ["circle-100"];
         function graph_drawing(i){
             $.ajax({
                     url:"http://helikarlab.github.io/ccNetViz/data/" + graph[i] + ".json",
@@ -47,7 +47,7 @@
                     type:"GET",
                     async: false,
                     success: function(res) {
-                        var result =Grid(res,0);
+                        var result =Grid(res,1);
                         var sc1 = result[0];
                         var t1 = result[1];
                         $(".result").append("<tr><td>Name: "+graph[i]+"</td><td>Time: "+t1.toFixed(2)+"</td><td>Score: "+sc1.toFixed(2)+"</td><td><input type='button' value='Drawing' onclick='graph_drawing("+i+")'/></td></tr>");
