@@ -2,16 +2,7 @@
 *  The algorithm is taken from an article http://bioinformatics.oxfordjournals.org/content/21/9/2036.full
 */
 
-function gridLayout() {}
-
-gridLayout.calculate = function(nodes, edges, size) {
-
-    /*
-        if the weight between the vertices less than "const_dmax", then select the minimum value 
-        between "d_max" and the distance between the vertices 
-     */
-    var const_dmax = 0;
-    var d_max = 1;
+ccNetViz.layout.grid = function(nodes, edges) {
 
     /**
      * The function of calculating the weights for the edges of the graph. Walk in depth to determine the degree of proximity of the two peaks
@@ -55,7 +46,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             W[nodes_number[edges[i].target.label]][nodes_number[edges[i].source.label]] = 5;
         }
         return W;
-    }
+    };
 
     /**
      * Changes "number_label" coordinates of the vertices in the new coordinates "p"
@@ -69,7 +60,7 @@ gridLayout.calculate = function(nodes, edges, size) {
         var R_temp = JSON.parse(JSON.stringify(R));
         R_temp[number_label] = p;
         return R_temp;
-    }
+    };
 
     /**
      * Counts how graph costs
@@ -98,7 +89,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             }
         }
         return score;
-    }
+    };
 
     /**
      * Counts how costs graph with respect to the alpha_nodes_number vertex
@@ -126,7 +117,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             }
         }
         return score;
-    }
+    };
 
     /**
      * Calculate a set of free points
@@ -147,7 +138,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             delete vacant_point[key];
         }
         return vacant_point;
-    }
+    };
 
     /**
      * Randomly place the vertices on the grid
@@ -173,7 +164,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             }
         };
         return R_temp;
-    }
+    };
 
     /**
      * Move casual tops, in a randomly selected spot available
@@ -206,7 +197,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             }
         };
         return R_1;
-    }
+    };
 
     /**
      * Cost of distance between two vertices
@@ -231,7 +222,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             }
         }
         return score;
-    }
+    };
 
     /**
      * Now we deduce the update formulas for the Δ-matrix. Suppose a node β 
@@ -263,7 +254,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             res -= WeightAlphaR(Operator(R, beta_number, q_point), alpha_number, matrix_weight);
         }
         return res;
-    }
+    };
 
     /**
      * Search for a local minimum
@@ -358,7 +349,7 @@ gridLayout.calculate = function(nodes, edges, size) {
             delta_min = delta1_min; 
         }
         return [R, f_0 + delta1_min];
-    }
+    };
 
     /**
      * Search low
@@ -406,50 +397,60 @@ gridLayout.calculate = function(nodes, edges, size) {
         }
        
         return R_min;
-    }
+    };
 
-    var size_temp = size;
 
-    /*
-    An associative array of vertex indices of names
-     */
-    var number_nodes_label = {};
-    for(var i = 0; i < nodes.length; i++){
-        number_nodes_label[nodes[i].label] = i;
-    }
+    this.apply = function() { 
+        /*
+            if the weight between the vertices less than "const_dmax", then select the minimum value 
+            between "d_max" and the distance between the vertices 
+         */
+        var const_dmax = 0;
+        var d_max = 1;
 
-    /*
-    The weight matrix based on M
-     */
-    var matrix_weight = WalkDepth(edges, number_nodes_label);
+        var size_temp = Math.floor(1.5 * Math.sqrt(nodes.length));;
 
-    var R = [];
-    for(var i = 0; i < nodes.length; i++){
-        R[i] = [0,0];
-    }
-    
-    var array_f = [];
-    for(var i = 0; i < 10; i++){
-        R = RandomLayoutR(R);
-        array_f[i] = WeightR (R, matrix_weight);
-    }
+        /*
+        An associative array of vertex indices of names
+         */
+        var number_nodes_label = {};
+        for(var i = 0; i < nodes.length; i++){
+            number_nodes_label[nodes[i].label] = i;
+        }
 
-    /*
-    simulation parameters
-     */
-    var T_min = 0.1;
-    var f_max = Math.max.apply(null, array_f);
-    var f_min = Math.min.apply(null, array_f);
-    var T_max = (f_max - f_min) / 2;
-    var r_c = 0.8;
-    var n_e = 10;
-    var p = 0.55;
-    
-    var R_min = gridLayout(T_max, T_min, R, n_e, r_c, p, matrix_weight, number_nodes_label);
+        /*
+        The weight matrix based on M
+         */
+        var matrix_weight = WalkDepth(edges, number_nodes_label);
 
-    for(var i = 0; i < R_min.length; i++){
-        nodes[i].x = R_min[i][0];
-        nodes[i].y = R_min[i][1];
-    } 
+        var R = [];
+        for(var i = 0; i < nodes.length; i++){
+            R[i] = [0,0];
+        }
+        
+        var array_f = [];
+        for(var i = 0; i < 10; i++){
+            R = RandomLayoutR(R);
+            array_f[i] = WeightR (R, matrix_weight);
+        }
 
-}
+        /*
+        simulation parameters
+         */
+        var T_min = 0.1;
+        var f_max = Math.max.apply(null, array_f);
+        var f_min = Math.min.apply(null, array_f);
+        var T_max = (f_max - f_min) / 2;
+        var r_c = 0.8;
+        var n_e = 10;
+        var p = 0.55;
+        
+        var R_min = gridLayout(T_max, T_min, R, n_e, r_c, p, matrix_weight, number_nodes_label);
+
+        for(var i = 0; i < R_min.length; i++){
+            nodes[i].x = R_min[i][0];
+            nodes[i].y = R_min[i][1];
+        } 
+        return true;
+    };
+};

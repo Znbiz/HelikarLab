@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>GSoC 2016</title>
+
+    <style type="text/css">
+        #container {
+          width: 500px;
+          height: 500px;
+        }
+      </style>
+    <meta name="viewport" content="width=device-width">
+  </head>
+  <body>
+    <canvas id="container"/>
+
+    <script src="../dist/ccNetViz.js"></script>
+
+    <script type="text/javascript">
+        var graph = new ccNetViz(document.getElementById('container'), {
+          styles :  {
+              background: { color: "rgb(0, 0, 0)" },  //background color of canvas, default: "rgb(255, 255, 255)"
+              node: { //predefined style
+                minSize: 8,   //minimum size of node representation in pixels, default: 6
+                maxSize: 16,    //maximum size of node representation in pixels, default: 16
+                color: "rgb(255, 0, 0)",  //node color (combined with node image), default: "rgb(255, 255, 255)"
+                texture: "images/circle.png",   //node image
+                label: {
+                  hideSize: 16,   //minimum size (height) for the label to be displayed
+                  color: "rgb(120, 0, 0)",  //label color, default: "rgb(120, 120, 120)"
+                  font: "15px Arial, Helvetica, sans-serif" //label font, default: "11px Arial, Helvetica, sans-serif"
+                }
+              },
+              edge: {   //predefined style
+                width: 2,   //edge width in pixels, default: 1
+                color: "rgb(86, 86, 86)",   //edge color, default: "rgb(204, 204, 204)"
+                arrow: {
+                  minSize: 6,   //minimum size of arrow in pixels, default: 6
+                  maxSize: 12,  //maximum size of arrow, default: 12
+                  aspect: 2,  //aspect of arrow image, default: 1
+                  texture: "images/arrow.png",  //arrow image
+                  hideSize: 2   //minimum size of arrow to be displayed
+                }
+              },
+              nodeBlue: {   //custom style
+                color: "rgb(0, 0, 255)"
+              },
+              nodeGiant: {  //custom style
+                minSize: 16
+              },
+              nodeWithSmallBlueLabel: {   //custom style
+                label: {
+                  color: "rgb(0, 0, 255)",
+                  font: "11px Arial, Helvetica, sans-serif"
+                }
+              },
+              edgeWideYellow: {   //custom style
+                width: 4,
+                color: "rgb(255, 255, 0)"
+              },
+              edgeWithWhiteArrow: {   //custom style
+                arrow: {
+                  color: "rgb(255, 255, 255)"
+                }
+              }
+          }
+        });
+
+        var  nodes= [
+                { label: "1"},
+                { label: "2"},
+                { label: "3"},
+                { label: "4"},
+                { label: "5"},
+                { label: "6"},
+                { label: "7"},
+                { label: "8"},
+                { label: "9"},
+                { label: "10"}
+              ];
+        var edges = [
+                { source: nodes[0], target: nodes[1] },
+                { source: nodes[1], target: nodes[2] },
+                { source: nodes[2], target: nodes[3] },
+                { source: nodes[3], target: nodes[4] },
+                { source: nodes[4], target: nodes[5] },
+                { source: nodes[5], target: nodes[6] },
+                { source: nodes[6], target: nodes[7] },
+                { source: nodes[7], target: nodes[8] },
+                { source: nodes[8], target: nodes[9] },
+                { source: nodes[9], target: nodes[0] }
+              ];
+
+        var styles = {
+            node: { label: { hideSize: 14 } },
+            edge: { arrow: { texture: "/images/arrow.png", hideSize: 2 } },
+            internal: { texture: "/images/red.png" },
+            external: { texture: "/images/blue.png" },
+            positive: { color: "rgb(171, 237, 199)" },
+            negative: { color: "rgb(244, 172, 164)" }
+        };
+
+        graph.set(nodes, edges, "grid");
+        graph.draw();
+	</script>
+  </body>
+</html>

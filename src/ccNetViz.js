@@ -42,7 +42,7 @@ ccNetViz = function(canvas, options) {
         this.edges = edges = edges || [];
 
         var lines = [], curves = [], circles = [];
-
+        
         var init = () => {
             for (var i = 0; i < nodes.length; i++) {
                 nodes[i].index = i;
@@ -82,7 +82,7 @@ ccNetViz = function(canvas, options) {
         };
 
         init();
-
+        
         layout && new ccNetViz.layout[layout](nodes, edges).apply() && ccNetViz.layout.normalize(nodes);
 
         scene.nodes.set(gl, options.styles, textures, nodes.length && !nodes[0].color ? nodes : [], style => ({
