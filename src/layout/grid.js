@@ -5,410 +5,330 @@
 ccNetViz.layout.grid = function(nodes, edges) {
 
     /**
-     * The function of calculating the weights for the edges of the graph. Walk in depth to determine the degree of proximity of the two peaks
-     * 
-     * @param {array} edges - an array of ribs
-     * @param {array} R - an array of vertex coordinates
-     * @param {array} nodes_number - associative array "name of vertex": "index of vertex"
-     * @return {array} The array of weights between the vertices of the graph
+     * Each node number is put into correspondence with an array of numbers of neighboring vertex
+     * @param {array} number_nodes_label - an array where each vertex name is associated its number
      */
-    function WalkDepth(edges, nodes_number){
-        var W = [];
-        
+    function Neighbors(number_nodes_label){
+        var mas = [];
+        var edges_temp = JSON.parse(JSON.stringify(edges));
+
+        /*
+        Remove the are multiples of ribs and loops
+         */
+        var temp = {};
+        var temp1 = [];
+        for(var i = 0; i < edges_temp.length; i++){
+            if(temp[edges_temp[i].target.label] != edges_temp[i].source.label){ 
+                temp[edges_temp[i].source.label] = edges_temp[i].target.label;
+                temp1.push(edges_temp[i]);
+            } 
+        }
+        edges_temp = temp1;
+
         for(var i = 0; i < nodes.length; i++){
-            var Wj = [];
-            for(var j = 0; j < nodes.length; j++){
-                    Wj[j] = -2;
+            var neighbors = [];
+            var k = 0;
+            for(var j = 0; j < edges_temp.length; j++){
+                var t = edges_temp[j].target.label;
+                var s = edges_temp[j].source.label
+                if (number_nodes_label[t] == i){
+                    neighbors[k++] = number_nodes_label[s];
+                } else if (number_nodes_label[s] == i){
+                    neighbors[k++] = number_nodes_label[t]
+                }
             }
-            W[i] = Wj;
+            mas[i] = neighbors;
         }
+        return mas;
+    }
 
-        for(var i = 0; i < edges.length; i++){
-            for (var j = 0; j < edges.length; j++){
-                if(edges[i].target.label == edges[j].source.label){
-                    for(var k = 0; k < edges.length; k++){
-                        if(edges[j].target.label == edges[k].source.label){
-                            for(var z = 0; z < edges.length; z++){
-                                if(edges[k].target.label == edges[z].source.label){
-                                    W[nodes_number[edges[i].source.label]][nodes_number[edges[z].target.label]] = 0;
-                                    W[nodes_number[edges[z].target.label]][nodes_number[edges[i].source.label]] = 0;
-                                }
-                            }
-                            W[nodes_number[edges[i].source.label]][nodes_number[edges[k].target.label]] = 1;
-                            W[nodes_number[edges[k].target.label]][nodes_number[edges[i].source.label]] = 1;
+    /**
+     * The function finds the optimal path from a point to all 
+     * other points of the graph, also gives the optimum distance to all other points.
+     * @param {array} visited          - Boolean array attending top of yes or no
+     * @param {array} d                - array lengths optimal paths to the heights
+     * @param {number} k               - distance from a given initial vertex
+     * @param {array} neighbors        - an array of arrays containing the neighbors of each vertex
+     * @param {array} queue_neighbors  - all vertex whose neighbors will check if they are not already checked
+     * @param {array} path             - the path from the initial vertex to each vertex
+     */
+    function DijkstrasAlgorithm(visited, d, k, neighbors,queue_neighbors,path){
+        var queue_temp = [];
+        for(var i = 0; i < queue_neighbors.length; i++){
+            if(!visited[queue_neighbors[i]]){  // If this node is not visited that go into it.
+                visited[queue_neighbors[i]] = true; 
+                for(var j = 0; j < neighbors[queue_neighbors[i]].length; j++){
+                    if(d[neighbors[queue_neighbors[i]][j]] > k){
+                        for(var temp = 0; temp < path[queue_neighbors[i]].length; temp++){
+                            path[neighbors[queue_neighbors[i]][j]].push(path[queue_neighbors[i]][temp]);
                         }
+                        path[neighbors[queue_neighbors[i]][j]].push(queue_neighbors[i]);
+                        d[neighbors[queue_neighbors[i]][j]] = k;
                     }
-                    W[nodes_number[edges[i].source.label]][nodes_number[edges[j].target.label]] = 3;
-                    W[nodes_number[edges[j].target.label]][nodes_number[edges[i].source.label]] = 3;
-                }
-            }
-            W[nodes_number[edges[i].source.label]][nodes_number[edges[i].target.label]] = 5;
-            W[nodes_number[edges[i].target.label]][nodes_number[edges[i].source.label]] = 5;
-        }
-        return W;
-    };
-
-    /**
-     * Changes "number_label" coordinates of the vertices in the new coordinates "p"
-     *  
-     * @param {array} R - an array of vertex coordinates
-     * @param {number} number_label - index of vertex
-     * @param {array} p - new coordinates
-     * @return {array} New layout
-     */ 
-    function Operator(R, number_label, p){
-        var R_temp = JSON.parse(JSON.stringify(R));
-        R_temp[number_label] = p;
-        return R_temp;
-    };
-
-    /**
-     * Counts how graph costs
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} Cost graph 
-     */
-    function WeightR (R, matrix_weight){
-        var score = 0;
-        var d = 0;
-        for(var i = 0; i < R.length; i++){
-            for(var j = 0; j < i; j++){
-                if((i != j) && (matrix_weight[i][j] != 0) ){
-                    var dx = R[i][0] - R[j][0];
-                    var dy = R[i][1] - R[j][1];
-                    
-                    d = Math.abs(dx) + Math.abs(dy);
-                    if(matrix_weight[i][j]>=const_dmax)
-                    {
-                        score += matrix_weight[i][j] * d;
-                    } else {
-                        score += matrix_weight[i][j] * Math.min(d, d_max);
-                    }
+                    queue_temp.push(neighbors[queue_neighbors[i]][j]);
                 }
             }
         }
-        return score;
-    };
+        queue_neighbors = JSON.parse(JSON.stringify(queue_temp));
+        if(queue_neighbors.length){
+            DijkstrasAlgorithm(visited, d, k+1, neighbors,queue_neighbors, path);
+        }
+    }
 
     /**
-     * Counts how costs graph with respect to the alpha_nodes_number vertex
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @param {number} alpha_nodes_number - index of vertex
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} Cost graph 
+     * Start function to bypass the graph width (Dijkstra's algorithm)
+     * @param {array} neighbors - an array of arrays containing the neighbors of each vertex
+     * @return {array} It returns an array containing two other array: An array of "special numbers": [nodes_number: SpN, ...]
+     * and an array of lengths of optimal routes between all vertices
      */
-    function WeightAlphaR(R, alpha_nodes_number, matrix_weight){
-        var score = 0;
-        var d = 0;
-        for(var i = 0; i < R.length; i++){
-            if(matrix_weight[alpha_nodes_number][i] != 0){
-                var dx = R[alpha_nodes_number][0] - R[i][0];
-                var dy = R[alpha_nodes_number][1] - R[i][1];
-                
-                d = Math.abs(dx) + Math.abs(dy);
-                if(matrix_weight[alpha_nodes_number][i]>=const_dmax)
-                {
-                    score += matrix_weight[alpha_nodes_number][i] * d;
-                } else {
-                    score += matrix_weight[alpha_nodes_number][i] * Math.min(d, d_max);
+    function MainDijkstrasAlgorithm(neighbors){
+        /*
+        An array of "special numbers": [nodes_number: SpN, ...]
+         */
+        var weight_nodes = []; 
+
+        /*
+        An array of lengths of optimal routes between all vertices
+         */
+        var matrix_length = [];
+
+        /*
+        Initialize the output variables
+         */
+        for(var i = 0; i < nodes.length; i++){
+            weight_nodes[i] = 0;
+            var temp = [];
+            for(var j = 0; j < nodes.length; j++){
+                temp[j] = 0;
+            }
+            matrix_length[i] = temp;
+        }
+
+        /*
+        Start the crawl count width for each vertex
+         */
+        for (var i = 0; i < nodes.length; i ++){
+            /*
+            An array of visited nodes
+             */
+            var visited = [];
+            /*
+            An array of lengths of optimal paths from vertex i to all other
+             */
+            var d = [];
+            /*
+            An array of the best ways of vertex i to all other
+             */
+            var path = {};
+            /*
+            Initialize variables
+             */
+            for(var j = 0; j < nodes.length; j++){
+                visited[j] = false; // initial list of visited nodes is empty
+                d[j] = 2000000;
+                path[j] = [];
+            }
+            d[i] = 0;
+            var queue_neighbors = [];
+            queue_neighbors.push(i);
+
+            DijkstrasAlgorithm(visited, d, 1, neighbors,queue_neighbors, path);
+
+            /*
+            We take out of "path" set of weights
+             */
+            for(var j in path){
+                for(var k = 0; k < path[j].length; k++){
+                    var node_temp = path[j][k];
+                    weight_nodes[node_temp]++;
+                }
+            }
+            /*
+            Fill the matrix lengths optimal ways
+             */
+            for(var j = 0; j < d.length; j++){
+                matrix_length[i][j] = d[j];
+            }
+        }
+        /*
+        average the results
+         */
+        for(var i = 0; i < weight_nodes.length; i++){
+            weight_nodes[i] /= (nodes.length-1);
+        }
+
+        return [weight_nodes, matrix_length];
+    }
+
+    /**
+     * Specifies the appeal of the grid points for the vertices of the graph
+     * @param {number} x             - coordinate
+     * @param {number} y             - coordinate
+     * @param {number} alpha         - number-node for drawing
+     * @param {array} R              - an array vertex drawing with their coordinates
+     * @param {array} weight_nodes   - an array with "special numbers"
+     * @param {array} matrix_length  - an array of lengths of optimal routes between all vertices
+     */
+    function AppealPoint(x, y, alpha, R, weight_nodes, matrix_length){
+        var appeal = 0;
+        for(var i = 0; i < nodes.length; i++){
+            if(R[i]){
+                var SpN_i = weight_nodes[i];
+                var SpN_alpha = weight_nodes[alpha];
+                var k = matrix_length[alpha][i];
+                var length = Math.sqrt((R[i][0] - x)*(R[i][0] - x) + (R[i][1] - y)*(R[i][1] - y));
+
+                var min = SpN_i > SpN_alpha ? SpN_alpha : SpN_i;
+                min = Math.abs(SpN_i - SpN_alpha) > min ? Math.floor(min) : Math.floor(Math.abs(SpN_i - SpN_alpha));
+                min = min == 0 ? 1 : min;
+                var hit = (length >= k); 
+                if(hit){
+                    var l = (length / k) > 1 ? 1 : (length / k);
+                    var Di = Math.abs(SpN_i - SpN_alpha)  / k / l;
+                    var l1 = Math.abs(SpN_i - SpN_alpha) /k <= length ? (min + 1) / SpN_i: Math.abs(SpN_i - SpN_alpha) /k;
+                    appeal += (l1 / length / k) + l /SpN_i ;
+                } else{
+                    var l = (length / k) > 1 ? 1 : (length / k);
+                    var l1 = Math.abs(SpN_i - SpN_alpha) /k <= length ? (min - 1) / SpN_i : Math.abs(SpN_i - SpN_alpha) /k;
+                    appeal -= (l1 / length / k ) - l / SpN_i  ;
                 }
             }
         }
-        return score;
-    };
+        return appeal;
+    }
 
     /**
-     * Calculate a set of free points
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @return {array} set of free points
+     * The function sets the coordinates of all vertices of the graph
+     * @param {array} weight_nodes       - an array with "special numbers"
+     * @param {array} matrix_length      - an array of lengths of optimal routes between all vertices
+     * @param {array} neighbors          - an array of arrays containing the neighbors of each vertex
+     * @param {array} number_nodes_label - an array where each vertex name is associated its number
      */
-    function VacantPoint(R){
-        var vacant_point = [];
-        for(var x = 0; x < size_temp; x++){
-            for(var y = 0; y <size_temp; y++){
-                var key = x + "_" + y;
-                vacant_point[key] = [x, y];
-            }
-        }
-        for (var i = 0; i < R.length; i++){
-            var key = R[i][0] + "_" + R[i][1];
-            delete vacant_point[key];
-        }
-        return vacant_point;
-    };
+    function Drawing(weight_nodes, matrix_length, neighbors, number_nodes_label){
+        var x_min = 0, x_max = 0, y_min = 0, y_max = 0, delta = 0;
 
-    /**
-     * Randomly place the vertices on the grid
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @return {array} new an array of vertex coordinates 
-     */
-    function RandomLayoutR(R){
-        var R_temp = JSON.parse(JSON.stringify(R));
-        var map = {};
-        for(var i = 0; i < R.length; i++){
-            while (true) {
-                var x = Math.floor(size_temp * Math.random());
-                var y = Math.floor(size_temp * Math.random());
-                var key = x + " " + y;
+        var size = Math.floor(Math.sqrt(nodes.length))
+        /*
+        The number vertex are not drawn
+         -1 As the one the nodes draw
+         */
+        var not_painted_vertex = nodes.length - 1;
 
-                if (!map[key]) {
-                    map[key] = true;
-                    R_temp[i][0] = x;
-                    R_temp[i][1] = y;
+        /*
+        not an empty point on the grid
+         */
+        var busy_point = {};
+
+        var R = [];
+        for(var i = 0; i < nodes.length; i++){
+            R[i] = false;
+        }
+
+        /*
+        Arranges neighbors ascending "special number"
+         */
+        for(var i = 0; i < neighbors.length; i++){
+            neighbors[i].sort(function(a,b){ return weight_nodes[a] - weight_nodes[b]; });
+        }
+        
+        /*
+        We create an array of vertices and sort them in descending order of "special numbers"
+         */
+        var vertex = [];
+        for(var i = 0; i < nodes.length; i++){
+            vertex[i] = i;
+        }
+        vertex.sort(function(a,b){ return weight_nodes[b] - weight_nodes[a]; });
+        
+        
+        /*
+        the first vertex coordinates manually set
+         */
+        R[vertex[0]] = [0,0];
+        busy_point[0+" "+0] = true;
+ 
+        while(not_painted_vertex){
+            var max_temp = -Infinity;
+            var p_coord = [0,0];
+            var alpha = 0;
+
+            /*
+            Select the nodes, for which we seek the coordinates
+             */
+            for(var i = 0; i < vertex.length; i++){
+                var flag = false;
+                alpha = vertex[i];
+                if(!R[alpha]){
                     break;
                 }
-            }
-        };
-        return R_temp;
-    };
-
-    /**
-     * Move casual tops, in a randomly selected spot available
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @param {nuumber} p - the likelihood of selecting the vertex
-     * @return {array} new an array of vertex coordinates 
-     */
-    function Neighbor(R, p){
-        var R_1 = JSON.parse(JSON.stringify(R));
-        var map_vacant = VacantPoint(R_1);
-        for(var i = 0; i < R_1.length; i++) {
-            var e = R_1[i];
-            var Eps = Math.random();
-            if(Eps <= p){
-                while (true) {
-                    var x = Math.floor(size * Math.random());
-                    var y = Math.floor(size * Math.random());
-                    var key = x + "_" + y;
-
-                    if (map_vacant[key]) {
-                        var key_temp = e[0] + "_" + e[1];
-                        delete map_vacant[key];
-                        map_vacant[key_temp] = [x,y];
-                        R_1[i][0] = x;
-                        R_1[i][1] = y;
+                for(var j = 0; j < neighbors[vertex[i]].length; j++){
+                    alpha = neighbors[vertex[i]][j];
+                    if(!R[alpha]){
+                        var flag = true;
                         break;
                     }
                 }
-            }
-        };
-        return R_1;
-    };
-
-    /**
-     * Cost of distance between two vertices
-     * 
-     * @param {array} R - an array of vertex coordinates
-     * @param {number} alpha_number - index of vertex
-     * @param {number} beta_number - index of vertex
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} Cost graph 
-     */
-    function WeightRAlphaBeta(R, alpha_number, beta_number, matrix_weight){
-        var score = 0;
-        if(matrix_weight[alpha_number][beta_number] != 0) {
-            var dx = R[alpha_number][0] - R[beta_number][0];
-            var dy = R[alpha_number][1] - R[beta_number][1];
-            // d = Math.sqrt(dx*dx + dy*dy);
-            d = Math.abs(dx) + Math.abs(dy);
-            if(matrix_weight[alpha_number][beta_number]>=const_dmax){
-                score += matrix_weight[alpha_number][beta_number] * d;
-            } else {
-                score += matrix_weight[alpha_number][beta_number] * Math.min(d, d_max);
-            }
-        }
-        return score;
-    };
-
-    /**
-     * Now we deduce the update formulas for the Δ-matrix. Suppose a node β 
-     * moving to a point q is the best least change of layout R, i.e.
-     * 
-     * @param {array} R - an array of vertex coordinates
-     * @param {number} beta_number - index of vertex
-     * @param {array} q_point - vertex coordinates
-     * @param {number} alpha_number - index of vertex
-     * @param {array} p_point - vertex coordinates
-     * @param {array} matrix_delta - delta matrix
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} a new value for the element delta matrix
-     */
-    function DeltaUpdate(R, beta_number, q_point, alpha_number, p_point, matrix_delta, matrix_weight){
-        var res; 
-        var p = p_point[0] + "_" + p_point[1];
-        var q = q_point[0] + "_" + q_point[1];
-        if(alpha_number == beta_number){
-            res = matrix_delta[beta_number][p] - matrix_delta[beta_number][q];
-        } else if ((alpha_number != beta_number) && (p != (R[beta_number][0] +"_"+R[beta_number][1]))) {
-            var TERM = WeightRAlphaBeta(Operator(Operator(R, beta_number, q_point), alpha_number, p_point), alpha_number, beta_number, matrix_weight);
-                    TERM -= WeightRAlphaBeta(Operator(R, beta_number, q_point), alpha_number, beta_number, matrix_weight);
-                    TERM -= WeightRAlphaBeta(Operator(R, alpha_number, p_point), alpha_number, beta_number, matrix_weight);
-                    TERM += WeightRAlphaBeta(R, alpha_number, beta_number, matrix_weight);
-            res = matrix_delta[alpha_number][p] + TERM;  
-        } else if((alpha_number != beta_number) && (p == (R[beta_number][0] +"_"+R[beta_number][1]))) {
-            res = WeightAlphaR(Operator(Operator(R, beta_number, q_point), alpha_number, p_point), alpha_number, matrix_weight);
-            res -= WeightAlphaR(Operator(R, beta_number, q_point), alpha_number, matrix_weight);
-        }
-        return res;
-    };
-
-    /**
-     * Search for a local minimum
-     * 
-     * @param {array} R_temp - an array of vertex coordinates
-     * @param {array} matrix_weight - matrix weights
-     * @param {array} number_nodes_label - index of vertex
-     * @return {array} Returns a new layout and its cost
-     */
-    function LocalMin(R_temp, matrix_weight, number_nodes_label){
-        R = JSON.parse(JSON.stringify(R_temp));
-
-        var f_0 = WeightR (R, matrix_weight);
-        var vacant_point = VacantPoint(R);
-        var beta_number = 0, q_point, q;
-        var beta1_number = 0, q1_point, q1;
-        var p_point;
-        var matrix_delta = [];
-        var delta_min = 0;
-        var delta1_min;
-        
-
-        for(var alpha_number = 0; alpha_number < nodes.length; alpha_number++){
-            matrix_delta[alpha_number] = {};
-            var f_R = WeightAlphaR(R, alpha_number, matrix_weight);
-            for(var p in vacant_point){
-                p_point = vacant_point[p];
-                matrix_delta[alpha_number][p] = WeightAlphaR(Operator(R, alpha_number, p_point), alpha_number, matrix_weight);
-                matrix_delta[alpha_number][p] -= f_R;  
-                if(matrix_delta[alpha_number][p] < delta_min){
-                    delta_min = matrix_delta[alpha_number][p];
-                    beta_number = alpha_number;
-                    q = p;
-                    q_point = p_point;
+                if(flag){
+                    break;
+                }
+            } 
+            
+            /*
+            Determine the delta
+             */
+            var temp_array = [];
+            for(var i = 0; i < weight_nodes.length; i++){
+                if(R[i]){
+                    temp_array.push(weight_nodes[i]);
                 }
             }
-        }
-        
-        while(delta_min < 0){ 
-            var matrix_delta_1 = []; 
-            delta1_min = 0;
+            temp_array.sort(function(a, b){ return b - a; });
+            delta = Math.floor(temp_array[0] / 2);
+            
+            
+            x_min = p_coord[0] < x_min ? p_coord[0] : x_min;
+            x_max = p_coord[0] > x_max ? p_coord[0] : x_max;
+            y_min = p_coord[1] < y_min ? p_coord[1] : y_min;
+            y_max = p_coord[1] > y_max ? p_coord[1] : y_max;
+            x_min = -size > x_min - delta ? -size : x_min;
+            x_max = size < x_max + delta ? size : x_max;
+            y_min = -size > y_min - delta ? -size : y_min;
+            y_max = size < y_max + delta? size : y_max;
+            delta = (x_min == -size) || (x_max == size) || (y_min == -size) ||( y_max == size) ? 0 : delta;
 
-            /*
-            Change the delta matrix
-             */
-            for(var alpha_number = 0; alpha_number < nodes.length; alpha_number++){
-                matrix_delta_1[alpha_number] = {};
-                for(var p in vacant_point){ 
-                    if(p == q) continue ;
-                    p_point = vacant_point[p];
-                    matrix_delta_1[alpha_number][p] = DeltaUpdate(R, beta_number, q_point, alpha_number, p_point, matrix_delta, matrix_weight);
-                    
-                    if(matrix_delta_1[alpha_number][p] < delta1_min){
-                        delta1_min = matrix_delta_1[alpha_number][p];
-                        beta1_number = alpha_number;
-                        q1 = p;
-                        q1_point = p_point;
+            for(var x = x_min - delta; x <= x_max + delta; x++){
+                for(var y = y_min - delta; y <= y_max + delta; y++){
+                    if(!busy_point[x + " " + y]){
+                        var temp = AppealPoint(x, y, alpha, R, weight_nodes, matrix_length); 
+                        if(temp >= max_temp){
+                            max_temp = temp;
+                            p_coord = [x, y];
+                        }
                     }
                 }
-
-                /*
-                Calculating the cost of the nodes when moving to a new free point. 
-                At this point, this point is not yet available and because of this 
-                it is not processed in the main loop.
-                 */
-                var p = R[beta_number][0] +"_"+R[beta_number][1];
-                p_point = R[beta_number];
-                matrix_delta_1[alpha_number][p] = DeltaUpdate(R, beta_number, q_point, alpha_number, p_point, matrix_delta, matrix_weight);
-                
-                if(matrix_delta_1[alpha_number][p] < delta1_min){
-                    delta1_min = matrix_delta_1[alpha_number][p];
-                    beta1_number = alpha_number;
-                    q1 = p;
-                    q1_point = p_point;
-                }
             }
-            
-            matrix_delta_1[beta_number][R[beta_number][0] +"_"+R[beta_number][1]] = - delta_min;
-            
-            /*
-            Change set vacant spots. And change the graph P, acting on his operator "Rearranged tops."
-             */
-            vacant_point[R[beta_number][0] +"_"+R[beta_number][1]] = R[beta_number];
-            R = Operator(R, beta_number, q_point);
-            delete vacant_point[q];
-            
-            matrix_delta = matrix_delta_1;
-            
-            beta_number = beta1_number;
-            q_point = q1_point;
-            q = q1;
-            delta_min = delta1_min; 
+            R[alpha] = p_coord;
+            busy_point[p_coord[0] + " " + p_coord[1]] = true;
+            not_painted_vertex--;
         }
-        return [R, f_0 + delta1_min];
-    };
 
-    /**
-     * Search low
-     * 
-     * @param  {number} T_max - the initial temperatures 
-     * @param  {number} T_min - the terminating temperatures
-     * @param  {array} R - an array of vertex coordinates
-     * @param  {number} n_e - the number of repetitive trials
-     * @param  {number} r_c - the cooling rate
-     * @param  {number} p - the layout perturbation rate is set to be
-     * @param  {array} matrix_weight - matrix weights
-     * @param  {array} number_nodes_label - index of vertex
-     * @return {array} minimal layout
-     */
-    function gridLayout(T_max, T_min, R, n_e, r_c, p, matrix_weight, number_nodes_label){
-        /*
-        An array with a random coordinates of vertices
-         */
-        R = RandomLayoutR(R);
-
-        var T = T_max;
-        var f;
-
-        var local_res = LocalMin(R, matrix_weight, number_nodes_label);
-        var f_min = f = local_res[1];
-        var R_min = local_res[0];
-        while(T > T_min){
-            for(var i = 0; i < n_e; i++){
-                /*
-                We change the coordinates of some vertices of the graph "R" with probability "p"
-                 */
-                var R1 = Neighbor(R, p);
-                var f1 = LocalMin(R, matrix_weight, number_nodes_label);
-                var Eps = Math.random();
-                if(Eps < Math.exp((f - f1) / T)){
-                    f = f1;
-                    R = R1;
-                }
-                if(f < f_min){
-                    f_min = f;
-                    R_min = R;
-                }
-            }
-            T = r_c * T;
+        for(var i = 0; i < R.length; i++){
+            R[i][0] += Math.abs(x_min) + delta + 1; //+1 to pull back from the edge
+            R[i][1] += Math.abs(y_min) + delta + 1;
         }
-       
-        return R_min;
-    };
+        
+        return R;
+    }
+
+
 
 
     this.apply = function() { 
-        /*
-            if the weight between the vertices less than "const_dmax", then select the minimum value 
-            between "d_max" and the distance between the vertices 
-         */
-        var const_dmax = 0;
-        var d_max = 1;
-
-        var size_temp = Math.floor(1.5 * Math.sqrt(nodes.length));;
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        /// main
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        var size_temp = 2 * Math.floor(Math.sqrt(nodes.length));
 
         /*
         An associative array of vertex indices of names
@@ -418,38 +338,19 @@ ccNetViz.layout.grid = function(nodes, edges) {
             number_nodes_label[nodes[i].label] = i;
         }
 
-        /*
-        The weight matrix based on M
-         */
-        var matrix_weight = WalkDepth(edges, number_nodes_label);
-
-        var R = [];
-        for(var i = 0; i < nodes.length; i++){
-            R[i] = [0,0];
-        }
         
-        var array_f = [];
-        for(var i = 0; i < 10; i++){
-            R = RandomLayoutR(R);
-            array_f[i] = WeightR (R, matrix_weight);
-        }
 
-        /*
-        simulation parameters
-         */
-        var T_min = 0.1;
-        var f_max = Math.max.apply(null, array_f);
-        var f_min = Math.min.apply(null, array_f);
-        var T_max = (f_max - f_min) / 2;
-        var r_c = 0.8;
-        var n_e = 10;
-        var p = 0.55;
-        
-        var R_min = gridLayout(T_max, T_min, R, n_e, r_c, p, matrix_weight, number_nodes_label);
+        var neighbors = Neighbors(number_nodes_label);
 
-        for(var i = 0; i < R_min.length; i++){
-            nodes[i].x = R_min[i][0];
-            nodes[i].y = R_min[i][1];
+        var result = MainDijkstrasAlgorithm(neighbors);
+        var weight_nodes = result[0];
+        var matrix_length = result[1];
+
+        var R = Drawing(weight_nodes, matrix_length, neighbors, number_nodes_label);
+
+        for(var i = 0; i < R.length; i++){
+            nodes[i].x = R[i][0];
+            nodes[i].y = R[i][1];
         } 
         return true;
     };
