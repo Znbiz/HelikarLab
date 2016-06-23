@@ -165,7 +165,9 @@ function generate_SDF_atlas_font(options){
         var canvas = document.createElement('canvas');
         canvas.width  = step;
         canvas.height = step;
+
         var ctx = canvas.getContext('2d');
+
 
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, step, step);
@@ -180,9 +182,20 @@ function generate_SDF_atlas_font(options){
         ctx.fillText(char, x, y);
         
 
-        canvas = SDF(canvas);
 
-        var limit = size;
+        var pix = ctx.getImageData(0, 0, step, step);
+        var imgData = [];
+        
+        for(var y = 0; y < step; y++){
+            for(var x = 0; x < step; x++){
+                var i = ((y * step) + x) * 4;
+                var j = ((y * step) + x);
+                imgData[j] = pix.data[i];
+            }
+        }
+        canvas = SDF(canvas);
+        // canvas = generate_signed_distance_fields(canvas);
+        
         
         var pix = ctx.getImageData(0, 0, step, step);
         var k_left = 0;
@@ -193,7 +206,7 @@ function generate_SDF_atlas_font(options){
                 if(flag_right){
                     var k_1 = (i * step + j_1) * 4;
                     var temp = pix.data[k_1];
-                    if(limit < temp){
+                    if(120 < temp){
                         flag_right = false;
                         k_right = j_1;
                     }
@@ -201,7 +214,7 @@ function generate_SDF_atlas_font(options){
                 if(flag_left){
                     var k = (i * step + j) * 4;
                     var temp = pix.data[k];
-                    if(limit < temp){
+                    if(120 < temp){
                         flag_left = false;
                         k_left = j;
                     }
@@ -300,12 +313,12 @@ function generate_SDF_atlas_font(options){
             }
         }
 
-        imgData = signed_distance_fields(imgData, width, height)
-        
+        imgData = signed_distance_fields(imgData, width, height);
 
         var max = 0;
         var min = 0;
         for(var i = 0; i < imgData.length; i++){
+            imgData[i] = imgData[i] >= 0 ? Math.sqrt(imgData[i]) : -Math.sqrt(-imgData[i])
             if (imgData[i] > max) {
                 max = imgData[i]; 
             }
@@ -315,15 +328,37 @@ function generate_SDF_atlas_font(options){
         }
         min = Math.abs(min);
 
+        Math.fmod = function (a,b) { return Number((a - (Math.floor(a / b) * b)).toPrecision(8)); };
+
         for(var i = 0; i < imgData.length; i++ ){
-            if(imgData[i] < 0){
-                imgData[i] = 0.5 + imgData[i] / min / 1.3;
-            } else if(imgData[i] > 0){
-                imgData[i] = 0.5 + imgData[i] / max;
-            } else {
-                imgData[i] = 0.5;
+            if(imgData[i] <= 0){
+                imgData[i] = (1  - Math.exp(min / imgData[i]));
             }
         }
+        max = Math.max.apply(null, imgData);
+
+        for(var i = 0; i < imgData.length; i++ ){
+            imgData[i] = (255 - Math.fmod((imgData[i]) /Math.log(width), max) * 255);
+        }
+
+        // var temp_index = [];
+        // var k = 0;
+        // for(var i = 0; i < imgData.length; i++ ){
+        //     if(imgData[i] <= 0){
+        //         imgData[i] = (min + imgData[i]) ;
+        //         imgData[i] =  (255 - Math.fmod((imgData[i])/ Math.log(width), min) * 255);
+        //         temp_index[k++] = i;
+        //     } else if(imgData[i] > 0){
+        //         imgData[i] =  imgData[i] ; 
+        //         imgData[i] = (255 - Math.fmod((imgData[i]) /Math.log(width), max) * 255);
+        //     }
+        // }
+
+
+        // max = Math.max.apply(null, imgData);
+        // for(var i = 0; i < temp_index.length; i++ ){
+        //     imgData[temp_index[i]] =  imgData[temp_index[i]] / max *255;
+        // }
 
         var imgData1 = ctx.createImageData(width, height);
 
@@ -331,10 +366,11 @@ function generate_SDF_atlas_font(options){
             for(var x = 0; x < width; x++){
                 var i = ((y * height) + x) * 4;
                 var j = ((y * height) + x);
-                imgData1.data[i]     = 255 - imgData[j] * 255;
-                imgData1.data[i + 1] = 255 - imgData[j] * 255;
-                imgData1.data[i + 2] = 255 - imgData[j] * 255;
+                imgData1.data[i]     = imgData[j]
+                imgData1.data[i + 1] = imgData[j]
+                imgData1.data[i + 2] = imgData[j]
                 imgData1.data[i + 3] = 255; 
+            
             }
         }
 
