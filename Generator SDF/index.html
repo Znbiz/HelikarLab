@@ -20,7 +20,7 @@
                 <label>Texture <input type="checkbox" id="debug"></label><br>
             </div>
             <div class="col-md-6">
-                <p>Enter the starting index ASCII: <input type="number" id="chars_start" value=90></p>
+                <p>Enter the starting index ASCII: <input type="number" id="chars_start" value=80></p>
                 <p>Enter the ending index ASCII: <input type="number" id="chars_end" value=127></p>
                 <p>Enter the name of the font: <input type="text" id="font_family" value="Arial"></p>
                 <p>Enter the size of the font: <input type="number" id="font_size" value=50></p>
@@ -103,11 +103,11 @@
         var options = {
             size: 50,
             font_family: "Arial",
-            start: 90,
+            start: 80,
             end: 127
         }
 
-        var result =  generate_SDF_atlas_font(options);
+        var result =  generate_SDF_atlas_font(options); 
         Main(result);
 
         function Start() {
@@ -121,7 +121,7 @@
         }
 
         function save(){
-            window.open(result.img,"atlas");
+            window.open(result.img.toDataURL("image/png"),"atlas");
         }
 
         /**
@@ -134,30 +134,24 @@
              * @param  {string}   url  - link or pictures
              * @param  {Function} done [description]
              */
-            function loadCanvas(url, done) {
-                var img = new Image();
-                img.onload = function() { done(img); };
-                
-                img.src = url;
-            }
 
             var scale = 64;
             var metrics = result_generate_SDF_atlas_font.metrics;
             var atlas_canvas = document.getElementById('atlas');
-            loadCanvas(result_generate_SDF_atlas_font.img, function(atlas){
-                atlas_canvas.width = atlas.width;
-                atlas_canvas.height = atlas.height;
-                var atlas_ctx = atlas_canvas.getContext('2d');
-                atlas_ctx.drawImage(atlas, 0, 0);
+            
+            var atlas = result_generate_SDF_atlas_font.img
+            atlas_canvas.width = atlas.width;
+            atlas_canvas.height = atlas.height;
+            var atlas_ctx = atlas_canvas.getContext('2d');
+            atlas_ctx.drawImage(atlas, 0, 0);
 
-                 /*
-                 Mini atlas
-                 */
-                atlas_canvas.width = 512;
-                atlas_canvas.height = 512;
-                atlas_ctx.scale(512 / atlas.width, 512 / atlas.height);
-                atlas_ctx.drawImage(atlas, 0, 0);
-            });
+             /*
+             Mini atlas
+             */
+            atlas_canvas.width = 512;
+            atlas_canvas.height = 512;
+            atlas_ctx.scale(512 / atlas.width, 512 / atlas.height);
+            atlas_ctx.drawImage(atlas, 0, 0);
 
             document.getElementById('metrics').innerHTML = JSON.stringify(metrics);
 
@@ -305,19 +299,18 @@
             }
 
              
-            // loadCanvas("OpenSans-Regular.png", function(atlas) {
-            loadCanvas(result_generate_SDF_atlas_font.img, function(atlas) {
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, atlas);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+           
+            var atlas = result_generate_SDF_atlas_font.img
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, atlas);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-                gl.uniform2f(shader.u_texsize, atlas.width, atlas.height)
+            gl.uniform2f(shader.u_texsize, atlas.width, atlas.height)
 
-                draw();
-            });
+            draw();
 
 
             function draw() {
