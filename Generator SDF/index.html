@@ -16,14 +16,15 @@
                 <label>Buffer <input type="range" style="width:400px" value="0.2" step="0.01" min="0.1" max="0.7" id="buffer"></label><br>
                 <label>Angle <input type="range" style="width:400px" value="0" step="0.01" min="-3.141592" max="3.141592" id="angle"></label><br>
                 <label>Gamma <input type="range" style="width:400px" value="1" step="0.01" min="0" max="4" id="gamma"></label><br>
+                <label>The distance between the characters <input type="range" style="width:400px" value="1" step="0.1" min="-10" max="10" id="distance"></label><br>
                 <label>Text to render <input type="text" style="width:400px" value="Znbiz" id="text_render"></label><br>
                 <label>Texture <input type="checkbox" id="debug"></label><br>
             </div>
             <div class="col-md-6">
                 <p>Enter the starting index ASCII: <input type="number" id="chars_start" value=80></p>
-                <p>Enter the ending index ASCII: <input type="number" id="chars_end" value=127></p>
+                <p>Enter the ending index ASCII: <input type="number" id="chars_end" value=180></p>
                 <p>Enter the name of the font: <input type="text" id="font_family" value="Arial"></p>
-                <p>Enter the size of the font: <input type="number" id="font_size" value=50></p>
+                <p>Enter the size of the font: <input type="number" id="font_size" value=25></p>
                 <p>Enter the size serving of characters of simultaneously processed in the GPU: <input type="number" id="number_char_portions" value=50></p>
                 <button onclick="Start();">Start</button>
                 <p id="time"></p>
@@ -101,8 +102,8 @@
         var options = {
             size: 25,
             font_family: "Arial",
-            start: 1,
-            end: 256,
+            start: 80,
+            end: 180,
             number_char_portions: 50
         }
 
@@ -266,7 +267,7 @@
              All that is below is taken from the example mapbox 
              https://www.mapbox.com/blog/text-signed-distance-fields/
              */
-            function drawGlyph(chr, pen, size, vertexElements, textureElements) {
+            function drawGlyph(chr, pen, size, vertexElements, textureElements, distance) {
                 var metric = metrics.chars[chr];
                 if (!metric) return;
                 var scale = size / metrics.size;
@@ -298,11 +299,11 @@
                         posX + width, posY + height
                     ); 
                 }
-                pen.x = pen.x + (horiAdvance + width / 6) * scale
+                pen.x = pen.x + horiAdvance * scale + distance * scale;
             }
 
 
-            function measureText(text, size) {
+            function measureText(text, size, distance) {
                 var dimensions = {
                     advance: 0
                 }
@@ -312,21 +313,21 @@
                     if(metrics.chars[text[i]]){
                         var horiAdvance = metrics.chars[text[i]][4];
                     }
-                    dimensions.advance += horiAdvance * scale;
+                    dimensions.advance += horiAdvance * scale + distance * scale;
                 }
                 return dimensions;
             }
 
-            function createText(size, str) {
+            function createText(size, str, distance) {
                 var vertexElements = [];
                 var textureElements = [];
 
-                var dimensions = measureText(str, size);
+                var dimensions = measureText(str, size, distance);
 
                 var pen = { x: canvas.width / 2 - dimensions.advance / 2, y: canvas.height / 2 };
                 for (var i = 0; i < str.length; i++) {
                     var chr = str[i];
-                    drawGlyph(chr, pen, size, vertexElements, textureElements);
+                    drawGlyph(chr, pen, size, vertexElements, textureElements, distance);
                 }
 
                 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -360,9 +361,10 @@
                 var gamma = +document.getElementById('gamma').value;
                 var debug = +document.getElementById('debug').checked;
                 var str = document.getElementById('text_render').value;
+                var distance = document.getElementById('distance').value;
 
 
-                createText(scale, str);
+                createText(scale, str, distance);
 
                 var mvMatrix = mat4.create();
                 mat4.identity(mvMatrix);
@@ -407,6 +409,7 @@
             document.getElementById('gamma').oninput = draw;
             document.getElementById('debug').oninput = draw;
             document.getElementById('text_render').oninput = draw;
+            document.getElementById('distance').oninput = draw;
         }
     </script>
 </body>

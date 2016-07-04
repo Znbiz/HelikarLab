@@ -7,13 +7,13 @@ function generate_SDF_atlas_font(options){
         var delta = Math.floor(Math.sqrt(chars_array.length) + 1);
         var family = family_option;
         var size_font = size_font_option;
-        var delta_1_resultat = size_font + Math.floor(size_font / 5);
+        var delta_1_resultat = size_font + Math.floor(size_font / 8);
         var step_resultat   = delta_1_resultat; 
         var shape_resultat  = [delta*delta_1_resultat, delta*delta_1_resultat];
 
 
-        var size = 100;
-        var delta_1 = size + Math.floor(size / 5);
+        var size = 50;
+        var delta_1 = size + Math.floor(size / 8);
         var step   = delta_1; 
         var shape  = [delta*delta_1, delta*delta_1];
 
@@ -26,7 +26,7 @@ function generate_SDF_atlas_font(options){
 
         var shader_fs = ["precision highp float;",
             "uniform vec2 uFloatTextureSize;",
-            "const int size = 40;",
+            "const int size = 20;",
             "uniform sampler2D uSampler;",
             "varying vec2 vTextureCoords;",
             "void main(void) {",
@@ -34,10 +34,11 @@ function generate_SDF_atlas_font(options){
             "    vec2 temp_coord;",
             "    float d;",
             "    float step = 1.0 / uFloatTextureSize[0];",
-            "    temp_coord.x = vTextureCoords.x - 20.0 * step;",
+            "    float neighborhood = 10.0 * step;", // The neighborhood search the nearest opposite point
+            "    temp_coord.x = vTextureCoords.x - neighborhood;",
             "    if(texture2D(uSampler, vTextureCoords).r > 0.5){",
             "        for(int i = 0; i < size; i++) {",
-            "            temp_coord.y = vTextureCoords.y - 20.0 * step;",
+            "            temp_coord.y = vTextureCoords.y - neighborhood;",
             "            for(int j = 0; j < size; j++) {",
             "                if(texture2D(uSampler, temp_coord).r < 0.05){",
             "                    d = pow(temp_coord.x - vTextureCoords.x, 2.0);",
@@ -54,7 +55,7 @@ function generate_SDF_atlas_font(options){
             "        gl_FragColor = vec4(0.0, min, 0.0, 1.0);",
             "    } else {",
             "        for(int i = 0; i < size; i++) {",
-            "            temp_coord.y = vTextureCoords.y - 20.0 * step;",
+            "            temp_coord.y = vTextureCoords.y - neighborhood;",
             "            for(int j = 0; j < size; j++) {",
             "                if(texture2D(uSampler, temp_coord).r > 0.95){",
             "                    d = pow(temp_coord.x - vTextureCoords.x, 2.0);",
@@ -91,14 +92,15 @@ function generate_SDF_atlas_font(options){
             ctx.fillStyle = '#fff';
 
 
-            var x = step / 2;
-            var y = step / 2;
+            var half_step = step / 2;
+            var x = half_step;
+            var y = half_step;
 
             for (var i = 0; i < chars_array.length; i++) {
                 ctx.fillText(chars_array[i], x, y);
                 
-                if ((x += step) > shape[0] - step / 2) {
-                    x = step / 2;
+                if ((x += step) > shape[0] - half_step) {
+                    x = half_step;
                     y += step;
                 } 
             }
@@ -398,7 +400,7 @@ function generate_SDF_atlas_font(options){
         var canvas = document.createElement('canvas');
         var x = 0, y = 0;
         var delta = Math.floor(Math.sqrt(number_char_portions) + 1);
-        var delta_1 = size + Math.floor(size / 5);
+        var delta_1 = size + Math.floor(size / 8);
         var shape_resultat  = [delta*delta_1, delta*delta_1];
         canvas.width = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[0];
         canvas.height = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[1];
