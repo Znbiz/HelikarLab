@@ -26,8 +26,7 @@ function generate_SDF_atlas_font(options){
 
         var shader_fs = ["precision highp float;",
             "uniform vec2 uFloatTextureSize;",
-            "const int size = 50;",
-            "const float max_len = 70.0;",
+            "const int size = 40;",
             "uniform sampler2D uSampler;",
             "varying vec2 vTextureCoords;",
             "void main(void) {",
@@ -35,10 +34,10 @@ function generate_SDF_atlas_font(options){
             "    vec2 temp_coord;",
             "    float d;",
             "    float step = 1.0 / uFloatTextureSize[0];",
-            "    temp_coord.x = vTextureCoords.x - 25.0 * step;",
+            "    temp_coord.x = vTextureCoords.x - 20.0 * step;",
             "    if(texture2D(uSampler, vTextureCoords).r > 0.5){",
             "        for(int i = 0; i < size; i++) {",
-            "            temp_coord.y = vTextureCoords.y - 25.0 * step;",
+            "            temp_coord.y = vTextureCoords.y - 20.0 * step;",
             "            for(int j = 0; j < size; j++) {",
             "                if(texture2D(uSampler, temp_coord).r < 0.05){",
             "                    d = pow(temp_coord.x - vTextureCoords.x, 2.0);",
@@ -51,11 +50,11 @@ function generate_SDF_atlas_font(options){
             "            }",    
             "            temp_coord.x += step;",
             "        }",
-            "        min = pow(min, 0.5);",
+            "        min = pow(min, 0.45);",
             "        gl_FragColor = vec4(0.0, min, 0.0, 1.0);",
             "    } else {",
             "        for(int i = 0; i < size; i++) {",
-            "            temp_coord.y = vTextureCoords.y - 25.0 * step;",
+            "            temp_coord.y = vTextureCoords.y - 20.0 * step;",
             "            for(int j = 0; j < size; j++) {",
             "                if(texture2D(uSampler, temp_coord).r > 0.95){",
             "                    d = pow(temp_coord.x - vTextureCoords.x, 2.0);",
@@ -68,7 +67,7 @@ function generate_SDF_atlas_font(options){
             "            }",
             "            temp_coord.x += step;",
             "        }",   
-            "        min = pow(min, 0.5);",
+            "        min = pow(min, 0.27);",
             "        gl_FragColor = vec4(min, 0.0, 0.0, 1.0);",
             "    }",
             "}"];
@@ -115,8 +114,6 @@ function generate_SDF_atlas_font(options){
         function initGL(canvas) {
             try {
                 gl = canvas.getContext("experimental-webgl");
-                gl.viewportWidth = shape[0];
-                gl.viewportHeight = shape[1];
             } catch (e) {
             }
             if (!gl) {
@@ -254,8 +251,9 @@ function generate_SDF_atlas_font(options){
             
             for(var y = 0; y < height; y++){
                 for(var x = 0; x < width; x++){
-                    var i = ((y * height) + x) * 4;
-                    var j = ((y * height) + x);
+                    var temp = (y * height) + x;
+                    var i = temp * 4;
+                    var j = temp;
                     if(pix.data[i] == 0){
                         imgData[j] = 0 - pix.data[i + 1];
                     } else {
@@ -265,13 +263,13 @@ function generate_SDF_atlas_font(options){
             }
 
             /*
-             Generate image in sdf format
+              Generate image in sdf format
              */
-            
+
             var max = 0;
             var min = 0;
             for(var i = 0; i < imgData.length; i++){
-                imgData[i] = imgData[i] >= 0 ? Math.sqrt(imgData[i]) : -Math.sqrt(-imgData[i])
+                imgData[i] = imgData[i] >= 0 ? imgData[i] : -imgData[i]
                 if (imgData[i] > max) {
                     max = imgData[i]; 
                 }
@@ -281,25 +279,31 @@ function generate_SDF_atlas_font(options){
             }
             min = Math.abs(min);
 
-            Math.fmod = function (a,b) { return Number((a - (Math.floor(a / b) * b)).toPrecision(8)); };
-
             for(var i = 0; i < imgData.length; i++ ){
                 if(imgData[i] <= 0){
                     imgData[i] = (1  - Math.exp(min / imgData[i]));
                 }
             }
-            max = Math.max.apply(null, imgData);
+            max = 0;
+            for(var i = 0; i < imgData.length; i++){
+                if (imgData[i] > max) {
+                    max = imgData[i]; 
+                }
+            }
 
+            var temp = 1147.5 / max;
             for(var i = 0; i < imgData.length; i++ ){
-                imgData[i] = 255 - (imgData[i]) / max * 255 * 2.7 ;
+                imgData[i] = 255 - (imgData[i]) * temp ; // temp: / max * 1147.5,  1147.5 = 255 * 4.5
             }
 
             var imgData1 = ctx.createImageData(width, height);
 
             for(var y = 0; y < height; y++){
+                var y_temp = y * height;
                 for(var x = 0; x < width; x++){
-                    var i = ((y * height) + x) * 4;
-                    var j = ((y * height) + x);
+                    var temp = y_temp + x;
+                    var i = temp * 4;
+                    var j = temp;
                     imgData1.data[i]     = imgData[j]
                     imgData1.data[i + 1] = imgData[j]
                     imgData1.data[i + 2] = imgData[j]
@@ -333,12 +337,12 @@ function generate_SDF_atlas_font(options){
                 var k_left = 0;
                 var k_right = 0;
                 var flag_left = true, flag_right = true;
-                for(var j = x, j_1 = x + step_resultat - 1; (j < x + step_resultat / 2) && (j_1 > x + step_resultat / 2); j++, j_1--){
+                for(var j = x, j_1 = x + step_resultat - 1; j < j_1; j++, j_1--){
                     for(var i = y; i < y + step_resultat; i++){
                         if(flag_right){
                             var k_1 = i * step_resultat + j_1;
                             var temp = imgData[k_1];
-                            if(120 < temp){
+                            if(125 < temp){
                                 flag_right = false;
                                 k_right = j_1;
                             }
@@ -346,7 +350,7 @@ function generate_SDF_atlas_font(options){
                         if(flag_left){
                             var k = i * step_resultat + j;
                             var temp = imgData[k];
-                            if(120 < temp){
+                            if(125 < temp){
                                 flag_left = false;
                                 k_left = j;
                             }
@@ -357,8 +361,6 @@ function generate_SDF_atlas_font(options){
 
                 k_left -= x;
                 k_right -= x;
-                
-                var delta = k_left - (step_resultat - k_right);
                 
                 //  advance - character width
                 var advance = (k_right - k_left);
@@ -410,7 +412,7 @@ function generate_SDF_atlas_font(options){
 
         for(var i = 0; i < Math.floor(chars_array.length / number_char_portions) + 1; i++) {
             /*
-             process the characters through a portion sdf
+             process the characters through a portion sdf 
              */
             var chars = [];
             for(var j = 0; (j < number_char_portions) && (i * number_char_portions + j < chars_array.length); j++) {
@@ -468,7 +470,9 @@ function generate_SDF_atlas_font(options){
 
     var family = options.font_family;
 
-    var result = divide_into_portions (8, family, size, chars_array);
+    var number_char_portions = options.number_char_portions;
+
+    var result = divide_into_portions (number_char_portions, family, size, chars_array);
 
     return {img : result.canvas, metrics: result.metrics};
 }

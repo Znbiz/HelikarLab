@@ -8,3 +8,4 @@ GSoC
 - 27.05.2016 - The integrated function of constructing graph on the grid in the library [ccNetViz] (https://github.com/Znbiz/HelikarLab/tree/master/dist/ccNetViz.js) . Example graph layout [examples/Grid.html] (https://github.com/Znbiz/HelikarLab/tree/master/examples)
 - 21.06.2016 - Create Drawing Text with Signed Distance Fields [code] (https://github.com/Znbiz/HelikarLab/tree/master/Generator%20SDF)
 - 30.06.2016 - Create Drawing Text with Signed Distance Fields. Using WebGL to calculate SDF. [code] (https://github.com/Znbiz/HelikarLab/tree/master/Generator%20SDF)
+- 04.07.2016 - Fixed critical error in the generator SDF. Partially optimized algorithm SDF. Added in the generator SDF: selection size serving of characters of simultaneously processed in the GPU.
