@@ -103,11 +103,7 @@ function generate_SDF_atlas_font(options){
             shaderProgram = gl.createProgram();
             gl.attachShader(shaderProgram, vertexShader);
             gl.attachShader(shaderProgram, fragmentShader);
-            var time_start = Date.now();
             gl.linkProgram(shaderProgram);
-            var time_end = Date.now();
-            var time = time_end - time_start;
-            console.log(time)
 
             if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
                 alert("Could not initialise shaders");
