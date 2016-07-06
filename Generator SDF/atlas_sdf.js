@@ -10,9 +10,15 @@ function generate_SDF_atlas_font(options){
         var delta_1_resultat = size_font + Math.floor(size_font / 8);
         var step_resultat   = delta_1_resultat; 
         var shape_resultat  = [delta*delta_1_resultat, delta*delta_1_resultat];
+        var metrics = {
+                family : family,
+                style  : "Regular",
+                size   : size_font,
+                chars  : {}
+        };
 
 
-        var size = 50;
+        var size = size_font_option;
         var delta_1 = size + Math.floor(size / 8);
         var step   = delta_1; 
         var shape  = [delta*delta_1, delta*delta_1];
@@ -97,15 +103,27 @@ function generate_SDF_atlas_font(options){
             var half_step = step / 2;
             var x = half_step;
             var y = half_step;
+            var x_result = 0;
+            var y_result = 0;
+            var chars = {};
 
+            var temp_step = step_resultat / step;
             for (var i = 0; i < chars_array.length; i++) {
+                var text = ctx.measureText(chars_array[i]); // TextMetrics object
+                var advance = text.width * temp_step;
+                var padding = (step_resultat - advance) / 2
+                chars[chars_array[i]] = [step_resultat, step_resultat, padding, padding, advance, x_result, y_result];
                 ctx.fillText(chars_array[i], x, y);
                 
+                x_result += step_resultat;
                 if ((x += step) > shape[0] - half_step) {
                     x = half_step;
                     y += step;
+                    x_result = 0;
+                    y_result += step_resultat;
                 } 
             }
+            metrics.chars = chars;
             return canvas;
         }
 
@@ -241,96 +259,13 @@ function generate_SDF_atlas_font(options){
 
             return canvas;
         }
+        
+        var atlas = webGLStart();
 
-        function SDF(img) {
-            var canvas = document.createElement('canvas');
-            canvas.width = shape_resultat[0];
-            canvas.height = shape_resultat[1];
-            var ctx = canvas.getContext('2d');
-            var width = shape_resultat[0];
-            var height = shape_resultat[1];
-            ctx.drawImage(img, 0, 0, shape_resultat[0], shape_resultat[1]);
-            var pix = ctx.getImageData(0, 0, width, height);
-            var imgData = [];
-            
-            for(var y = 0; y < height; y++){
-                var temp = y * height
-                for(var x = 0; x < width; x++){
-                    temp += x;
-                    var i = temp * 4;
-                    var j = temp;
-                    imgData[j] = pix.data[i];
-                }
-            }
-
-            /*
-             We believe metric for the picture to sdf
-             */
-            
-            var metrics = {
-                family : family,
-                style  : "Regular",
-                size   : size_font,
-                chars  : {}
-            };
-
-            
-            var x = 0, y = 0;
-            var chars = {};
-
-            /*
-             Loop through each character area
-             */
-            for (var char = 0; char < chars_array.length; char++) {
-
-                var k_left = 0;
-                var k_right = 0;
-                var flag_left = true, flag_right = true;
-                for(var j = x, j_1 = x + step_resultat - 1; j < j_1; j++, j_1--){
-                    for(var i = y; i < y + step_resultat; i++){
-                        if(flag_right){
-                            var k_1 = i * step_resultat + j_1;
-                            var temp = imgData[k_1];
-                            if(125 < temp){
-                                flag_right = false;
-                                k_right = j_1;
-                            }
-                        }
-                        if(flag_left){
-                            var k = i * step_resultat + j;
-                            var temp = imgData[k];
-                            if(125 < temp){
-                                flag_left = false;
-                                k_left = j;
-                            }
-                        }
-                    }
-                    if(! (flag_left || flag_right)) break;
-                }
-
-                k_left -= x;
-                k_right -= x;
-                
-                //  advance - character width
-                var advance = (k_right - k_left);
-                chars[chars_array[char]] = [step_resultat, step_resultat, k_left, k_right, advance, x, y];
-                if ((x += step_resultat) > shape_resultat[0] - step_resultat) {
-                    x = 0;
-                    y += step_resultat;
-                } 
-            }
-            metrics.chars = chars;
-           
-            var result = {
+        var result = {
                 metrics : metrics,
-                canvas  : canvas
-            };
-            
-            return result;
-        }
-
-        var imgSDF = webGLStart();
-        var result = SDF(imgSDF);
+                canvas  : atlas
+        };
         return result
     }
 
