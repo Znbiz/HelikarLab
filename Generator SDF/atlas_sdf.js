@@ -1,28 +1,8 @@
 function generate_SDF_atlas_font(options){
-
-        function webGL_SDF(family_option, chars_array_option, size_font_option) {
-
-
-        var chars_array = chars_array_option;
-        var delta = Math.floor(Math.sqrt(chars_array.length) + 1);
-        var family = family_option;
-        var size_font = size_font_option;
-        var delta_1_resultat = size_font + Math.floor(size_font / 8);
-        var step_resultat   = delta_1_resultat; 
-        var shape_resultat  = [delta*delta_1_resultat, delta*delta_1_resultat];
-        var metrics = {
-                family : family,
-                style  : "Regular",
-                size   : size_font,
-                chars  : {}
-        };
-
-
-        var size = size_font_option;
-        var delta_1 = size + Math.floor(size / 8);
-        var step   = delta_1; 
-        var shape  = [delta*delta_1, delta*delta_1];
-
+    var gl;
+    var shaderProgram;
+    var vertexBuffer;
+    function init_shader(canvas) {
         var shader_vs = ["attribute vec3 aVertexPosition;",
             "varying vec2 vTextureCoords;",
             "void main(void) {",
@@ -79,8 +59,116 @@ function generate_SDF_atlas_font(options){
             "        min = 1.0 - min * 4.5;",
             "        gl_FragColor = vec4(min, min, min, 1.0);",
             "    }",
-            "}"];
+            "}"];   
 
+        function initGL(canvas) {
+            try {
+                gl = canvas.getContext("experimental-webgl");
+            } catch (e) {
+            }
+            if (!gl) {
+                alert("Could not initialise WebGL, sorry :-(");
+            }
+        }
+
+
+        function getShader(type, text_sh) {
+            var str = "";
+            for(var i = 0; i < text_sh.length; i++) {
+                str += text_sh[i] + "\r\n";
+            }
+
+            var shader;
+            shader = gl.createShader(type);
+
+            gl.shaderSource(shader, str);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                alert(gl.getShaderInfoLog(shader));
+                return null;
+            }
+
+            return shader;
+        }
+
+
+
+
+        function initShaders() {
+
+            var fragmentShader = getShader(gl.FRAGMENT_SHADER, shader_fs);
+            var vertexShader = getShader(gl.VERTEX_SHADER, shader_vs);
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            var time_start = Date.now();
+            gl.linkProgram(shaderProgram);
+            var time_end = Date.now();
+            var time = time_end - time_start;
+            console.log(time)
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                alert("Could not initialise shaders");
+            }
+
+            gl.useProgram(shaderProgram);
+
+            shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        }
+
+        function initBuffers() {
+            var vertices =[
+                    -1, -1, 0,
+                    -1, 1, 0,
+                    1, 1, 0,
+                    1, -1, 0
+                    ];
+            vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            vertexBuffer.itemSize = 3;
+
+            var indices = [0, 1, 2, 2, 3, 0];
+            indexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+            indexBuffer.numberOfItems = indices.length; 
+        }
+
+        initGL(canvas);
+        initShaders();
+        initBuffers();
+        return canvas;
+    }
+
+    function webGL_SDF(family_option, chars_array_option, size_font_option, canvas) {
+
+
+        var chars_array = chars_array_option;
+        var delta = Math.floor(Math.sqrt(chars_array.length) + 1);
+        var family = family_option;
+        var size_font = size_font_option;
+        var delta_1_resultat = size_font + Math.floor(size_font / 8);
+        var step_resultat   = delta_1_resultat; 
+        var shape_resultat  = [delta*delta_1_resultat, delta*delta_1_resultat];
+        var metrics = {
+                family : family,
+                style  : "Regular",
+                size   : size_font,
+                chars  : {}
+        };
+
+
+        var size = size_font_option;
+        var delta_1 = size + Math.floor(size / 8);
+        var step   = delta_1; 
+        var shape  = [delta*delta_1, delta*delta_1];
+        canvas.width = shape[0];
+        canvas.height = shape[1]
+        
         function create_atlas_char(){
 
 
@@ -126,83 +214,10 @@ function generate_SDF_atlas_font(options){
             return canvas;
         }
 
-        var gl;
-        var shaderProgram;
+        
         var texture;
-        var vertexBuffer;
-        var canvas;
 
-        function initGL(canvas) {
-            try {
-                gl = canvas.getContext("experimental-webgl");
-            } catch (e) {
-            }
-            if (!gl) {
-                alert("Could not initialise WebGL, sorry :-(");
-            }
-        }
-
-
-        function getShader(type, text_sh) {
-            var str = "";
-            for(var i = 0; i < text_sh.length; i++) {
-                str += text_sh[i] + "\r\n";
-            }
-
-            var shader;
-            shader = gl.createShader(type);
-
-            gl.shaderSource(shader, str);
-            gl.compileShader(shader);
-
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                alert(gl.getShaderInfoLog(shader));
-                return null;
-            }
-
-            return shader;
-        }
-
-
-
-
-        function initShaders() {
-            var fragmentShader = getShader(gl.FRAGMENT_SHADER, shader_fs);
-            var vertexShader = getShader(gl.VERTEX_SHADER, shader_vs);
-
-            shaderProgram = gl.createProgram();
-            gl.attachShader(shaderProgram, vertexShader);
-            gl.attachShader(shaderProgram, fragmentShader);
-            gl.linkProgram(shaderProgram);
-
-            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-                alert("Could not initialise shaders");
-            }
-
-            gl.useProgram(shaderProgram);
-
-            shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-        }
-
-        function initBuffers() {
-            var vertices =[
-                    -1, -1, 0,
-                    -1, 1, 0,
-                    1, 1, 0,
-                    1, -1, 0
-                    ];
-            vertexBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-            vertexBuffer.itemSize = 3;
-
-            var indices = [0, 1, 2, 2, 3, 0];
-            indexBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-            indexBuffer.numberOfItems = indices.length; 
-        }
+        
 
 
         function drawScene() {
@@ -241,12 +256,7 @@ function generate_SDF_atlas_font(options){
 
 
         function webGLStart() {
-            canvas = document.createElement('canvas');
-            canvas.width = shape[0];
-            canvas.height = shape[1];
-            initGL(canvas);
-            initShaders();
-            initBuffers();
+            
 
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.enable(gl.DEPTH_TEST);
@@ -255,15 +265,14 @@ function generate_SDF_atlas_font(options){
             gl.viewportHeight = shape[1];
 
             setTextures();
-
             return canvas;
         }
         
-        var atlas = webGLStart();
+        webGLStart();
 
         var result = {
                 metrics : metrics,
-                canvas  : atlas
+                canvas  : canvas
         };
         return result
     }
@@ -293,6 +302,13 @@ function generate_SDF_atlas_font(options){
             chars  : {}
         }
 
+
+        /*
+         Инициализируем холст для рисование
+         */        
+        var canvas_atlas = document.createElement('canvas');
+        canvas_atlas = init_shader(canvas_atlas)
+
         for(var i = 0; i < Math.floor(chars_array.length / number_char_portions) + 1; i++) {
             /*
              process the characters through a portion sdf 
@@ -301,7 +317,9 @@ function generate_SDF_atlas_font(options){
             for(var j = 0; (j < number_char_portions) && (i * number_char_portions + j < chars_array.length); j++) {
                 chars[j] = chars_array[i * number_char_portions + j];
             }
-            var res = webGL_SDF(family, chars, size);
+
+            
+            var res = webGL_SDF(family, chars, size, canvas_atlas);
             ctx.drawImage(res.canvas, x, y);
 
             /*
