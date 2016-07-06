@@ -52,7 +52,8 @@ function generate_SDF_atlas_font(options){
             "            temp_coord.x += step;",
             "        }",
             "        min = pow(min, 0.45);",
-            "        gl_FragColor = vec4(0.0, min, 0.0, 1.0);",
+            "        min = 1.0 - 1.0 / pow(2.71828, 1.0 / min);",
+            "        gl_FragColor = vec4(min, min, min, 1.0);",
             "    } else {",
             "        for(int i = 0; i < size; i++) {",
             "            temp_coord.y = vTextureCoords.y - neighborhood;",
@@ -69,7 +70,8 @@ function generate_SDF_atlas_font(options){
             "            temp_coord.x += step;",
             "        }",   
             "        min = pow(min, 0.27);",
-            "        gl_FragColor = vec4(min, 0.0, 0.0, 1.0);",
+            "        min = 1.0 - min * 4.5;",
+            "        gl_FragColor = vec4(min, min, min, 1.0);",
             "    }",
             "}"];
 
@@ -252,69 +254,14 @@ function generate_SDF_atlas_font(options){
             var imgData = [];
             
             for(var y = 0; y < height; y++){
+                var temp = y * height
                 for(var x = 0; x < width; x++){
-                    var temp = (y * height) + x;
+                    temp += x;
                     var i = temp * 4;
                     var j = temp;
-                    if(pix.data[i] == 0){
-                        imgData[j] = 0 - pix.data[i + 1];
-                    } else {
-                        imgData[j] = pix.data[i];
-                    }
+                    imgData[j] = pix.data[i];
                 }
             }
-
-            /*
-              Generate image in sdf format
-             */
-
-            var max = 0;
-            var min = 0;
-            for(var i = 0; i < imgData.length; i++){
-                imgData[i] = imgData[i] >= 0 ? imgData[i] : -imgData[i]
-                if (imgData[i] > max) {
-                    max = imgData[i]; 
-                }
-                if (imgData[i] < min) {
-                    min = imgData[i]; 
-                }
-            }
-            min = Math.abs(min);
-
-            for(var i = 0; i < imgData.length; i++ ){
-                if(imgData[i] <= 0){
-                    imgData[i] = (1  - Math.exp(min / imgData[i]));
-                }
-            }
-            max = 0;
-            for(var i = 0; i < imgData.length; i++){
-                if (imgData[i] > max) {
-                    max = imgData[i]; 
-                }
-            }
-
-            var temp = 1147.5 / max;
-            for(var i = 0; i < imgData.length; i++ ){
-                imgData[i] = 255 - (imgData[i]) * temp ; // temp: / max * 1147.5,  1147.5 = 255 * 4.5
-            }
-
-            var imgData1 = ctx.createImageData(width, height);
-
-            for(var y = 0; y < height; y++){
-                var y_temp = y * height;
-                for(var x = 0; x < width; x++){
-                    var temp = y_temp + x;
-                    var i = temp * 4;
-                    var j = temp;
-                    imgData1.data[i]     = imgData[j]
-                    imgData1.data[i + 1] = imgData[j]
-                    imgData1.data[i + 2] = imgData[j]
-                    imgData1.data[i + 3] = 255; 
-                
-                }
-            }
-
-            ctx.putImageData(imgData1, 0, 0);
 
             /*
              We believe metric for the picture to sdf
@@ -378,9 +325,9 @@ function generate_SDF_atlas_font(options){
                 metrics : metrics,
                 canvas  : canvas
             };
+            
             return result;
         }
-
 
         var imgSDF = webGLStart();
         var result = SDF(imgSDF);
@@ -399,7 +346,7 @@ function generate_SDF_atlas_font(options){
     function divide_into_portions (number_char_portions, family, size, chars_array) {
         var canvas = document.createElement('canvas');
         var x = 0, y = 0;
-        var delta = Math.floor(Math.sqrt(number_char_portions) + 1);
+        var delta = Math.floor(Math.sqrt(number_char_portions)+1);
         var delta_1 = size + Math.floor(size / 8);
         var shape_resultat  = [delta*delta_1, delta*delta_1];
         canvas.width = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[0];
@@ -474,7 +421,7 @@ function generate_SDF_atlas_font(options){
 
     var number_char_portions = options.number_char_portions;
 
-    var result = divide_into_portions (number_char_portions, family, size, chars_array);
+    var result = divide_into_portions (50, family, size, chars_array);
 
     return {img : result.canvas, metrics: result.metrics};
 }
