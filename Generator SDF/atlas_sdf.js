@@ -107,20 +107,19 @@ function generate_SDF_atlas_font(options){
             var y_result = 0;
             var chars = {};
 
-            var temp_step = step_resultat / step;
             for (var i = 0; i < chars_array.length; i++) {
                 var text = ctx.measureText(chars_array[i]); // TextMetrics object
-                var advance = text.width * temp_step;
+                var advance = text.width;
                 var padding = (step_resultat - advance) / 2
                 chars[chars_array[i]] = [step_resultat, step_resultat, padding, padding, advance, x_result, y_result];
                 ctx.fillText(chars_array[i], x, y);
                 
-                x_result += step_resultat;
+                x_result += step;
                 if ((x += step) > shape[0] - half_step) {
                     x = half_step;
                     y += step;
                     x_result = 0;
-                    y_result += step_resultat;
+                    y_result += step;
                 } 
             }
             metrics.chars = chars;
