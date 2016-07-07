@@ -280,7 +280,7 @@
                 var posX = metric[5];
                 var posY = metric[6];
                 if (width > 0 && height > 0) {
-                    // pen.x = pen.x - padding_left * scale;
+                    pen.x = pen.x - padding_left * scale + distance * scale;
                     // Add a quad (= two triangles) per glyph.
                     vertexElements.push(
                         pen.x, pen.y,

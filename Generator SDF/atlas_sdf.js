@@ -1,8 +1,11 @@
 function generate_SDF_atlas_font(options){
-    var gl;
-    var shaderProgram;
-    var vertexBuffer;
-    function init_shader(canvas) {
+    /**
+     * The creation and initialization of context webgl. Creating shaders
+     * @param  {object} canvas - canvas
+     * @return {object} Return canvas
+     */
+    function init_gl(canvas) {
+
         var shader_vs = ["attribute vec3 aVertexPosition;",
             "varying vec2 vTextureCoords;",
             "void main(void) {",
@@ -61,21 +64,43 @@ function generate_SDF_atlas_font(options){
             "    }",
             "}"];   
 
+        /**
+         * Function to create the webgl context
+         * @param  {object} canvas - canvas
+         * @return {object} webgl context
+         */
         function initGL(canvas) {
-            try {
-                gl = canvas.getContext("experimental-webgl");
-            } catch (e) {
+            var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+            var context = null;
+            for(var i = 0; i < names.length; i++) {
+                try {
+                    context = canvas.getContext(names[i], { antialias: false });
+                } catch(e) { }
+                if(context) {
+                    break;
+                }
             }
-            if (!gl) {
-                alert("Could not initialise WebGL, sorry :-(");
+            if(context) {
+                context.viewportWidth = canvas.width;
+                context.viewportHeight = canvas.height;
+            } else {
+                alert("Failed to create webgl context");
             }
+
+            return context;
         }
 
 
-        function getShader(type, text_sh) {
+        /**
+         * Create shader
+         * @param  {const} type    - type shader (fragment or vertex)
+         * @param  {array} text_sh - text shader code
+         * @return {object} shader
+         */
+        function getShader(gl, type, text_sh) {
             var str = "";
             for(var i = 0; i < text_sh.length; i++) {
-                str += text_sh[i] + "\r\n";
+                str += text_sh[i];
             }
 
             var shader;
@@ -95,10 +120,10 @@ function generate_SDF_atlas_font(options){
 
 
 
-        function initShaders() {
+        function initShaders(gl) {
 
-            var fragmentShader = getShader(gl.FRAGMENT_SHADER, shader_fs);
-            var vertexShader = getShader(gl.VERTEX_SHADER, shader_vs);
+            var fragmentShader = getShader(gl, gl.FRAGMENT_SHADER, shader_fs);
+            var vertexShader = getShader(gl, gl.VERTEX_SHADER, shader_vs);
 
             shaderProgram = gl.createProgram();
             gl.attachShader(shaderProgram, vertexShader);
@@ -113,9 +138,11 @@ function generate_SDF_atlas_font(options){
 
             shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
             gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+            return gl;
         }
 
-        function initBuffers() {
+        function initBuffers(gl) {
             var vertices =[
                     -1, -1, 0,
                     -1, 1, 0,
@@ -132,41 +159,49 @@ function generate_SDF_atlas_font(options){
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
             indexBuffer.numberOfItems = indices.length; 
+
+            return gl;
         }
 
-        initGL(canvas);
-        initShaders();
-        initBuffers();
-        return canvas;
+        var gl = initGL(canvas);
+        gl = initShaders(gl);
+        gl = initBuffers(gl);
+        return {gl: gl, canvas: canvas};
     }
 
-    function webGL_SDF(family_option, chars_array_option, size_font_option, canvas) {
-
+    /**
+     * Creating SDF atlas fonts and metrics for Atlas
+     * @param  {string} family_option      - type font
+     * @param  {array} chars_array_option - the character set
+     * @param  {number} size_font_option   - size font
+     * @param  {object} canvas             - canvas
+     * @param  {object} gl                 - context webgl
+     * @return {object} SDF atlas fonts and metrics for Atlas
+     */
+    function webGL_SDF(family_option, chars_array_option, size_font_option, canvas, gl) {
 
         var chars_array = chars_array_option;
         var delta = Math.floor(Math.sqrt(chars_array.length) + 1);
         var family = family_option;
-        var size_font = size_font_option;
-        var delta_1_resultat = size_font + Math.floor(size_font / 8);
-        var step_resultat   = delta_1_resultat; 
-        var shape_resultat  = [delta*delta_1_resultat, delta*delta_1_resultat];
         var metrics = {
                 family : family,
                 style  : "Regular",
                 size   : size_font,
                 chars  : {}
         };
-
-
-        var size = size_font_option;
-        var delta_1 = size + Math.floor(size / 8);
+        var size_font = size_font_option;
+        var delta_1 = size_font + Math.floor(size_font / 8);
         var step   = delta_1; 
         var shape  = [delta*delta_1, delta*delta_1];
         canvas.width = shape[0];
-        canvas.height = shape[1]
+        canvas.height = shape[1] ;
+        var texture;
         
-        function create_atlas_char(){
-
+        /**
+         * Create atlas char and metrcs atlas
+         * @return {object} canvas
+         */
+        function create_atlas_char_and_metrcs_atlas(){
 
             var canvas = document.createElement('canvas');
             canvas.width  = shape[0];
@@ -174,17 +209,17 @@ function generate_SDF_atlas_font(options){
 
             var ctx = canvas.getContext('2d');
 
-
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, shape[0], shape[1]);
 
-            ctx.font = size + 'px ' + family;
+            ctx.font = size_font + 'px ' + family;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#fff';
 
 
             var half_step = step / 2;
+            var quarter_step = step / 4;
             var x = half_step;
             var y = half_step;
             var x_result = 0;
@@ -193,9 +228,10 @@ function generate_SDF_atlas_font(options){
 
             for (var i = 0; i < chars_array.length; i++) {
                 var text = ctx.measureText(chars_array[i]); // TextMetrics object
-                var advance = text.width;
-                var padding = (step_resultat - advance) / 2
-                chars[chars_array[i]] = [step_resultat, step_resultat, padding, padding, advance, x_result, y_result];
+                var advance = text.width + quarter_step;
+                var padding = (step - advance) / 2;
+                padding = padding < 0 ? 0 : padding;
+                chars[chars_array[i]] = [step, step, padding, padding, advance, x_result, y_result];
                 ctx.fillText(chars_array[i], x, y);
                 
                 x_result += step;
@@ -210,12 +246,7 @@ function generate_SDF_atlas_font(options){
             return canvas;
         }
 
-        
-        var texture;
-
-        
-
-
+    
         function drawScene() {
             gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -243,17 +274,13 @@ function generate_SDF_atlas_font(options){
         function setTextures(){
             texture = gl.createTexture();
             
-            image = create_atlas_char(); 
+            image = create_atlas_char_and_metrcs_atlas(); 
 
             handleTextureLoaded(image, texture);  
             drawScene(); 
         }
 
-
-
         function webGLStart() {
-            
-
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.enable(gl.DEPTH_TEST);
 
@@ -266,21 +293,17 @@ function generate_SDF_atlas_font(options){
         
         webGLStart();
 
-        var result = {
-                metrics : metrics,
-                canvas  : canvas
-        };
-        return result
+        return {metrics : metrics, canvas  : canvas};
     }
 
 
     /**
      * It divides a character set for the portion to the graphics card does not fall
-     * @param  {[type]} number_char_portions [description]
-     * @param  {[type]} family               [description]
-     * @param  {[type]} size                 [description]
-     * @param  {[type]} chars_array          [description]
-     * @return {[type]}                      [description]
+     * @param  {number} number_char_portions - The number of characters on one canvas when sent to GPU
+     * @param  {string} family               - type font
+     * @param  {number} size                 - size font
+     * @param  {array} chars_array           - chars array
+     * @return {object} sdf canvas atlas and metrics atlas 
      */
     function divide_into_portions (number_char_portions, family, size, chars_array) {
         var canvas = document.createElement('canvas');
@@ -300,10 +323,12 @@ function generate_SDF_atlas_font(options){
 
 
         /*
-         Инициализируем холст для рисование
+         Initialize the canvas for painting
          */        
         var canvas_atlas = document.createElement('canvas');
-        canvas_atlas = init_shader(canvas_atlas)
+        var gl_or_canvas = init_gl(canvas_atlas);
+        var gl = gl_or_canvas.gl;
+        var canvas_atlas = gl_or_canvas.canvas;
 
         for(var i = 0; i < Math.floor(chars_array.length / number_char_portions) + 1; i++) {
             /*
@@ -315,7 +340,7 @@ function generate_SDF_atlas_font(options){
             }
 
             
-            var res = webGL_SDF(family, chars, size, canvas_atlas);
+            var res = webGL_SDF(family, chars, size, canvas_atlas, gl);
             ctx.drawImage(res.canvas, x, y);
 
             /*
