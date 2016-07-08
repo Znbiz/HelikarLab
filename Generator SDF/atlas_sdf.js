@@ -26,6 +26,7 @@ function generate_SDF_atlas_font(options){
             "    float neighborhood = 10.0 * step;", // The neighborhood search the nearest opposite point
             "    temp_coord.x = vTextureCoords.x - neighborhood;",
             "    if(texture2D(uSampler, vTextureCoords).r > 0.5){",
+            "        min = 1.0;",
             "        for(int i = 0; i < size; i++) {",
             "            temp_coord.y = vTextureCoords.y - neighborhood;",
             "            for(int j = 0; j < size; j++) {",
@@ -40,8 +41,10 @@ function generate_SDF_atlas_font(options){
             "            }",    
             "            temp_coord.x += step;",
             "        }",
-            "        min = pow(min, 0.45);",
-            "        min = 1.0 - 1.0 / pow(2.71828, 1.0 / min);",
+            "        float min_temp = pow(min, 0.8);",
+            "        min = pow(min, step / min_temp );",
+            "        float st = 1.0 - pow(step, 0.46) * 3.5;",
+            "        min = (st + min);",
             "        gl_FragColor = vec4(min, min, min, 1.0);",
             "    } else {",
             "        for(int i = 0; i < size; i++) {",
@@ -58,7 +61,7 @@ function generate_SDF_atlas_font(options){
             "            }",
             "            temp_coord.x += step;",
             "        }",   
-            "        min = pow(min, 0.27);",
+            "        min = pow(min, 0.23);",
             "        min = 1.0 - min * 4.5;",
             "        gl_FragColor = vec4(min, min, min, 1.0);",
             "    }",
@@ -181,7 +184,7 @@ function generate_SDF_atlas_font(options){
     function webGL_SDF(family_option, chars_array_option, size_font_option, canvas, gl) {
 
         var chars_array = chars_array_option;
-        var delta = Math.floor(Math.sqrt(chars_array.length) + 1);
+        var delta = 8;
         var family = family_option;
         var metrics = {
                 family : family,
@@ -190,7 +193,7 @@ function generate_SDF_atlas_font(options){
                 chars  : {}
         };
         var size_font = size_font_option;
-        var delta_1 = size_font + Math.floor(size_font / 8);
+        var delta_1 = size_font + 14;
         var step   = delta_1; 
         var shape  = [delta*delta_1, delta*delta_1];
         canvas.width = shape[0];
@@ -308,8 +311,10 @@ function generate_SDF_atlas_font(options){
     function divide_into_portions (number_char_portions, family, size, chars_array) {
         var canvas = document.createElement('canvas');
         var x = 0, y = 0;
-        var delta = Math.floor(Math.sqrt(number_char_portions)+1);
-        var delta_1 = size + Math.floor(size / 8);
+        // var delta = Math.floor(Math.sqrt(number_char_portions)+1);
+        // var delta_1 = size + Math.floor(size / 8);
+        var delta = 8;
+        var delta_1 = size + 14;
         var shape_resultat  = [delta*delta_1, delta*delta_1];
         canvas.width = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[0];
         canvas.height = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[1];
