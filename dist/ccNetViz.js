@@ -43,6 +43,7 @@ ccNetViz = function(canvas, options) {
 
         var lines = [], curves = [], circles = [];
 
+        // начальная обработка вершин и рёбер графа
         var init = function()  {
             for (var i = 0; i < nodes.length; i++) {
                 nodes[i].index = i;
@@ -53,6 +54,7 @@ ccNetViz = function(canvas, options) {
                     var e = edges[i];
                     (map[e.source.index] || (map[e.source.index] = {}))[e.target.index] = true;
                 }
+                // Определяем какой вид ребра будет между двумя вершинами петля, линия или изогнутая линия
                 for (var i = 0; i < edges.length; i++) {
                     var target, e = edges[i];
 
@@ -74,6 +76,7 @@ ccNetViz = function(canvas, options) {
             }
         };
 
+        // нормализация координат
         var normalize = function(a, b)  {
             var x = b.x - a.x;
             var y = b.y - a.y;
@@ -83,10 +86,11 @@ ccNetViz = function(canvas, options) {
 
         init();
 
+        //Располагаем вершины графа в одном из следующих фарианто силовой алгоритм, рандомный и на сетке
         layout && new ccNetViz.layout[layout](nodes, edges).apply() && ccNetViz.layout.normalize(nodes);
 
         scene.nodes.set(gl, options.styles, textures, nodes.length && !nodes[0].color ? nodes : [], function(style)  {return {
-            set: function(v, e, iV, iI)  {
+            set: function(v, e, iV, iI)  { 
                 var x = e.x;
                 var y = e.y;
                 ccNetViz.primitive.vertices(v.position, iV, x, y, x, y, x, y, x, y);
@@ -107,32 +111,90 @@ ccNetViz = function(canvas, options) {
             }};}
         );
 
+
+// texts[text] = result = {
+//                 width: char[0],
+//                 height: char[1],
+//                 left: char[5],
+//                 right: char[5] + char[0],
+//                 top: char[6],
+//                 bottom: char[6] + char[1],
+//                 width_char: char[4],
+//                 left_padding: char[2],
+//                 right_padding: char[3]
+//             };
+        // подготовка текста для рисования
         if (nodeStyle.label) {
             texts.clear();
             scene.labels.set(gl, options.styles, textures, nodes, function(style)  {
                 texts.setFont(style.font);
                 style.texture = texts.texture;
                 return {
-                    set: function(v, e, iV, iI)  {
+                    set: function(v, e, iV, iI)  { 
+                        // координаты узла
                         var x = e.x;
                         var y = e.y;
                         ccNetViz.primitive.vertices(v.position, iV, x, y, x, y, x, y, x, y);
-                        var t = texts.get(e.label);
-                        var dx = x <= 0.5 ? 0 : -t.width;
-                        var dy = y <= 0.5 ? 0 : -t.height;
-                        ccNetViz.primitive.vertices(v.relative, iV, dx, dy, t.width + dx, dy, t.width + dx, t.height + dy, dx, t.height + dy);
-                        ccNetViz.primitive.vertices(v.textureCoord, iV, t.left, t.bottom, t.right, t.bottom, t.right, t.top, t.left, t.top);
-                        ccNetViz.primitive.quad(v.indices, iV, iI);
+
+                        var array_meta_char = [];
+                        var width = 0; 
+                        var height = 0;
+                        var left, right, bottom;
+                        for(var i = 0; i < e.label.length; i++) {
+                            var char = e.label[i];
+                            array_meta_char[i] = texts.get(char);
+                            width += array_meta_char[i].width;
+                            height = array_meta_char[i].height;
+                        }
+                            // console.log(JSON.parse(JSON.stringify(v.textureCoord)))
+                        var dx = x <= 0.5 ? 0 : -width;
+                        var dy = y <= 0.5 ? 0 : -height; 
+                        for(var i = 0; i < array_meta_char.length; i++) {
+                            width = array_meta_char[i].width;
+                            height = array_meta_char[i].height;
+                            left = array_meta_char[i].left;
+                            right = array_meta_char[i].right;
+                            bottom = array_meta_char[i].bottom;
+                            ccNetViz.primitive.vertices(v.relative, iV, dx, dy, width + dx, dy, width + dx, height + dy, dx, height + dy);
+                            ccNetViz.primitive.vertices(v.textureCoord, iV,  0.5, 0.5, 1, 0.5, 1, 1, 0.5, 1);
+                            // ccNetViz.primitive.vertices(v.textureCoord, iV, left, bottom, right, bottom, right, top, left, top);
+                            ccNetViz.primitive.quad(v.indices, iV, iI);
+                            iV += 4;
+                            iI += 6;
+                            dx += width;
+                            // dy = height;
+                        }
+                        // var t = texts.get(char);
+                        // var t = texts.get(e.label);
+                        // var dx = x <= 0.5 ? 0 : -t.width;
+                        // var dy = y <= 0.5 ? 0 : -t.height; 
+                        // ccNetViz.primitive.vertices(v.relative, iV, dx, dy, t.width + dx, dy, t.width + dx, t.height + dy, dx, t.height + dy);
+                        // ccNetViz.primitive.vertices(v.textureCoord, iV, t.left, t.bottom, t.right, t.bottom, t.right, t.top, t.left, t.top);
+                        // ccNetViz.primitive.quad(v.indices, iV, iI);
+                        // 
+                        // 
+                        // ccNetViz.primitive.vertices = function(buffer, iV) {
+                            //     for (var i = 2, j = 2 * iV, n = arguments.length; i < n; i++, j++) buffer[j] = arguments[i];
+                            // }
+
+                            // ccNetViz.primitive.indices = function(buffer, iV, iI) {
+                            //     for (var i = 3, j = iI, n = arguments.length; i < n; i++, j++) buffer[j] = iV + arguments[i];
+                            // }
+
+                            // ccNetViz.primitive.quad = function(buffer, iV, iI) {
+                            //     ccNetViz.primitive.indices(buffer, iV, iI, 0, 1, 2, 2, 3, 0);
+                            // }
                     }}
             });
             texts.bind();
         }
 
+        // подготовка рёбер для рисования
         scene.lines.set(gl, options.styles, textures, lines, function(style)  {return {
             set: function(v, e, iV, iI)  {
                 var s = e.source;
                 var t = e.target;
-                var d = normalize(s, t);
+                var d = normalize(s, t);  
                 ccNetViz.primitive.vertices(v.position, iV, s.x, s.y, s.x, s.y, t.x, t.y, t.x, t.y);
                 ccNetViz.primitive.vertices(v.normal, iV, -d.y, d.x, d.y, -d.x, d.y, -d.x, -d.y, d.x);
                 ccNetViz.primitive.quad(v.indices, iV, iI);
@@ -260,6 +322,7 @@ ccNetViz = function(canvas, options) {
     var texts = new ccNetViz.texts(gl);
     var scene = createScene.call(this);
 
+
     var getSize = function(c, n, sc)  {
         var result = sc * Math.sqrt(c.width * c.height / n) / view.size;
         var s = c.style;
@@ -271,13 +334,33 @@ ccNetViz = function(canvas, options) {
     };
     var getNodeSize = function(c)  {return getSize(c, this.nodes.length, 0.4);}.bind(this);
 
+    var fsLabelsTexture = [
+            "precision mediump float;",
+            "uniform sampler2D texture;",
+            "uniform vec4 color;",
+            "float u_buffer = 0.7;",
+            "float u_gamma = 3.8;",
+            "float u_debug = 1.0;",
+            "varying vec2 tc;",
+            "void main() {",
+            "    vec4 colors = vec4(1.0,1.0,1.0,1.0);",
+            "    float dist = texture2D(texture, tc).r;",
+            "    if (u_debug > 0.0) {",
+            "        gl_FragColor = vec4(dist, dist, dist, 1);",
+            "    } else {",
+            "        float alpha = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, dist);",
+            "        gl_FragColor = vec4(color.rgb, alpha * color.a);",
+            "    }",
+            "}"
+        ];
+
     var fsColorTexture = [
         "precision mediump float;",
         "uniform vec4 color;",
         "uniform sampler2D texture;",
         "varying vec2 tc;",
         "void main(void) {",
-        "   gl_FragColor = color * texture2D(texture, vec2(tc.s, tc.t));",
+        "  gl_FragColor = color * texture2D(texture, vec2(tc.s, tc.t));",
         "}"
     ];
 
@@ -487,6 +570,18 @@ ccNetViz = function(canvas, options) {
         })
     );
     nodeStyle.label && scene.add("labels", new ccNetViz.primitive(gl, nodeStyle, "label", [
+            // "attribute vec2 position;",
+            // "attribute vec2 relative;",
+            // "attribute vec2 textureCoord;",
+            // "uniform mat4 transform;",
+            // "uniform float offset;",
+            // "uniform vec2 scale;",
+            // "uniform vec2 u_texsize;",
+            // "varying vec2 tc;",
+            // "void main() {",
+            // "    gl_Position = transform * vec4(position.xy, 0, 1);",
+            // "    tc = textureCoord / u_texsize;",
+            // "}"
             "attribute vec2 position;",
             "attribute vec2 relative;",
             "attribute vec2 textureCoord;",
@@ -495,13 +590,16 @@ ccNetViz = function(canvas, options) {
             "uniform mat4 transform;",
             "varying vec2 tc;",
             "void main(void) {",
-            "   gl_Position = vec4(scale * (relative + vec2(0, (2.0 * step(position.y, 0.5) - 1.0) * offset)), 0, 0) + transform * vec4(position, 0, 1);",
+            "   gl_Position = vec4(scale * (relative + vec2(0, (2.0 * step(position.y, 0.5) - 1.0) * offset)), 0, 0)",
+            "                        + transform * vec4(position, 0,  1);",
             "   tc = textureCoord;",
             "}"
-        ], fsColorTexture, function(c)  {
+        ], fsLabelsTexture, function(c)  {
             if (!getNodeSize(c)) return true;
             gl.uniform1f(c.shader.uniforms.offset, 0.5 * c.nodeSize);
             gl.uniform2f(c.shader.uniforms.scale, 1 / c.width, 1 / c.height);
+
+            // gl.uniform2f(c.shader.uniforms.u_texsize, c.width, c.width)
             ccNetViz.gl.uniformColor(gl, c.shader.uniforms.color, c.style.color);
         })
     );
@@ -533,7 +631,7 @@ ccNetViz = function(canvas, options) {
         view.y = Math.max(0, Math.min(1 - size, view.y - delta * (1 - (e.clientY - rect.top) / canvas.height)));
 
         this.draw();
-	e.preventDefault();
+	    e.preventDefault();
     }
 
     function onMouseDown(e) {
@@ -929,7 +1027,7 @@ ccNetViz.textures = function(onLoad) {
     var pending = {};
     var n = 0;
 
-    this.get = function(gl, img, action) {
+    this.get = function(gl, img, action) { 
         var p = pending[img];
         var t = textures[img];
 
@@ -953,7 +1051,125 @@ ccNetViz.textures = function(onLoad) {
 }
 
 ccNetViz.texts = function(gl) {
-    var size = 1024;
+
+    var size = 1024
+
+    var canvas = document.createElement("canvas");
+    // canvas.width = canvas.height = size;
+    // canvas.style.width = canvas.style.height = size + 'px';
+    // canvas.style.display = "none";
+    // document.body.appendChild(canvas);
+
+    // var context = canvas.getContext('2d');
+    // context.fillStyle = "white";
+    // context.textAlign = "left";
+    // context.textBaseline = "top";
+
+    var rendered, texts;
+    var x, y, height;
+
+    var metrics, result;
+    var options = {
+            size: 50,
+            font_family: "Arial",
+            start: 1,
+            end: 256
+        }
+
+    this.texture = gl.createTexture();
+
+    this.clear = function()  {
+        rendered = {};
+        // context.clearRect(0, 0, size, size);
+        height = x = y = 0;
+    };
+
+    this.setFont = function(font)  {
+        rendered[font] = texts = rendered[font] || {};
+        // context.font = font;
+        x = 0;
+        y += height;
+        height = +/(\d+)px/.exec(font)[1] + 1;
+
+        options.font_family = /\s(\D\S\w+),/.exec(font)[1];
+
+        result =  generate_SDF_atlas_font(options); 
+
+        canvas = result.img;
+        metrics = result.metrics;
+        canvas.style.width = canvas.style.height = canvas.width + 'px';
+        canvas.style.display = "none";
+        document.body.appendChild(canvas);
+        size = canvas.width;
+
+    };
+
+    this.get = function(text)  {
+        var result = texts[text];
+        if (!result) {
+            // var width = context.measureText(text).width;
+            // if (x + width > size) {
+            //     x = 0;
+            //     y += height;
+            // }
+            var char = metrics.chars[text];
+            console.log(char)
+            texts[text] = result = {
+                width: char[0],
+                height: char[1],
+                left: char[5] / size,
+                right: (char[5] + char[0]) / size,
+                top: char[6] / size,
+                bottom: (char[6] + char[1]) / size,
+                width_char: char[4],
+                left_padding: char[2],
+                right_padding: char[3]
+            };
+            // context.fillText(text, x, y);
+            // texts[text] = result = {
+            //     width: width,
+            //     height: height,
+            //     left: x / size,
+            //     right: (x + width) / size,
+            //     top: y / size,
+            //     bottom: (y + height) / size
+            // };
+            // x += width;
+        }
+        return result;
+    };
+
+    this.bind = function()  { 
+        // var url=canvas.toDataURL();
+        // var prm='scrollbars=1,top=0,left=0,resizable=1,width=680,height=350'
+        // window.open(url,'pmw',prm)
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, canvas);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        
+        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+
+        // gl.bindTexture(gl.TEXTURE_2D, texture);
+        // gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, atlas);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    }.bind(this);
+}
+
+ccNetViz.textss = function(gl) {
+
+    var size = 1024
 
     var canvas = document.createElement("canvas");
     canvas.width = canvas.height = size;
@@ -993,6 +1209,7 @@ ccNetViz.texts = function(gl) {
                 x = 0;
                 y += height;
             }
+            
             context.fillText(text, x, y);
             texts[text] = result = {
                 width: width,
@@ -1004,11 +1221,20 @@ ccNetViz.texts = function(gl) {
             };
             x += width;
         }
+        // var url=canvas.toDataURL();
+        // var prm='scrollbars=1,top=0,left=0,resizable=1,width=680,height=350'
+        // window.open(url,'pmw',prm)
+        // console.log(text)
+
         return result;
     };
 
-    this.bind = function()  {
+    this.bind = function()  { 
+        // console.log(text)
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        
+        console.log(JSON.parse(JSON.stringify(this.texture)))
+        console.log(this.texture)
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -1350,418 +1576,340 @@ ccNetViz.layout.force = function(nodes, edges) {
 };
 
 /**
-*  The algorithm is taken from an article http://bioinformatics.oxfordjournals.org/content/21/9/2036.full
-*/
+ *  The algorithm is taken from an article http://bioinformatics.oxfordjournals.org/content/21/9/2036.full
+ *  Author: Alexei Nekrasov (znbiz, E-mail: nekrasov.aleks1992@gmail.com)
+ */
 
 ccNetViz.layout.grid = function(nodes, edges) {
 
     /**
-     * The function of calculating the weights for the edges of the graph. Walk in depth to determine the degree of proximity of the two peaks
-     * 
-     * @param {array} edges - an array of ribs
-     * @param {array} R - an array of vertex coordinates
-     * @param {array} nodes_number - associative array "name of vertex": "index of vertex"
-     * @return {array} The array of weights between the vertices of the graph
+     * Each node number is put into correspondence with an array of numbers of neighboring vertex
+     * @param {array} number_nodes_label - an array where each vertex name is associated its number
      */
-    function WalkDepth(edges, nodes_number){
-        var W = [];
-        
+    function Neighbors(number_nodes_label){
+        var mas = [];
+        var edges_temp = JSON.parse(JSON.stringify(edges));
+
+        /*
+         Remove the are multiples of ribs and loops
+         */
+        var temp = {};
+        var temp1 = [];
+        for(var i = 0; i < edges_temp.length; i++){
+            if(temp[edges_temp[i].target.label] != edges_temp[i].source.label){ 
+                temp[edges_temp[i].source.label] = edges_temp[i].target.label;
+                temp1.push(edges_temp[i]);
+            } 
+        }
+        edges_temp = temp1;
+
         for(var i = 0; i < nodes.length; i++){
-            var Wj = [];
-            for(var j = 0; j < nodes.length; j++){
-                    Wj[j] = -2;
+            var neighbors = [];
+            var k = 0;
+            for(var j = 0; j < edges_temp.length; j++){
+                var t = edges_temp[j].target.label;
+                var s = edges_temp[j].source.label
+                if (number_nodes_label[t] == i){
+                    neighbors[k++] = number_nodes_label[s];
+                } else if (number_nodes_label[s] == i){
+                    neighbors[k++] = number_nodes_label[t]
+                }
             }
-            W[i] = Wj;
+            mas[i] = neighbors;
         }
+        return mas;
+    }
 
-        for(var i = 0; i < edges.length; i++){
-            for (var j = 0; j < edges.length; j++){
-                if(edges[i].target.label == edges[j].source.label){
-                    for(var k = 0; k < edges.length; k++){
-                        if(edges[j].target.label == edges[k].source.label){
-                            for(var z = 0; z < edges.length; z++){
-                                if(edges[k].target.label == edges[z].source.label){
-                                    W[nodes_number[edges[i].source.label]][nodes_number[edges[z].target.label]] = 0;
-                                    W[nodes_number[edges[z].target.label]][nodes_number[edges[i].source.label]] = 0;
-                                }
-                            }
-                            W[nodes_number[edges[i].source.label]][nodes_number[edges[k].target.label]] = 1;
-                            W[nodes_number[edges[k].target.label]][nodes_number[edges[i].source.label]] = 1;
+    /**
+     * The function finds the optimal path from a point to all 
+     * other points of the graph, also gives the optimum distance to all other points.
+     * @param {array} visited          - Boolean array attending top of yes or no
+     * @param {array} d                - array lengths optimal paths to the heights
+     * @param {number} k               - distance from a given initial vertex
+     * @param {array} neighbors        - an array of arrays containing the neighbors of each vertex
+     * @param {array} queue_neighbors  - all vertex whose neighbors will check if they are not already checked
+     * @param {array} path             - the path from the initial vertex to each vertex
+     */
+    function DijkstrasAlgorithm(visited, d, k, neighbors,queue_neighbors,path){
+        var queue_temp = [];
+        for(var i = 0; i < queue_neighbors.length; i++){
+            if(!visited[queue_neighbors[i]]){  // If this node is not visited that go into it.
+                visited[queue_neighbors[i]] = true; 
+                for(var j = 0; j < neighbors[queue_neighbors[i]].length; j++){
+                    if(d[neighbors[queue_neighbors[i]][j]] > k){
+                        for(var temp = 0; temp < path[queue_neighbors[i]].length; temp++){
+                            path[neighbors[queue_neighbors[i]][j]].push(path[queue_neighbors[i]][temp]);
                         }
+                        path[neighbors[queue_neighbors[i]][j]].push(queue_neighbors[i]);
+                        d[neighbors[queue_neighbors[i]][j]] = k;
                     }
-                    W[nodes_number[edges[i].source.label]][nodes_number[edges[j].target.label]] = 3;
-                    W[nodes_number[edges[j].target.label]][nodes_number[edges[i].source.label]] = 3;
-                }
-            }
-            W[nodes_number[edges[i].source.label]][nodes_number[edges[i].target.label]] = 5;
-            W[nodes_number[edges[i].target.label]][nodes_number[edges[i].source.label]] = 5;
-        }
-        return W;
-    };
-
-    /**
-     * Changes "number_label" coordinates of the vertices in the new coordinates "p"
-     *  
-     * @param {array} R - an array of vertex coordinates
-     * @param {number} number_label - index of vertex
-     * @param {array} p - new coordinates
-     * @return {array} New layout
-     */ 
-    function Operator(R, number_label, p){
-        var R_temp = JSON.parse(JSON.stringify(R));
-        R_temp[number_label] = p;
-        return R_temp;
-    };
-
-    /**
-     * Counts how graph costs
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} Cost graph 
-     */
-    function WeightR (R, matrix_weight){
-        var score = 0;
-        var d = 0;
-        for(var i = 0; i < R.length; i++){
-            for(var j = 0; j < i; j++){
-                if((i != j) && (matrix_weight[i][j] != 0) ){
-                    var dx = R[i][0] - R[j][0];
-                    var dy = R[i][1] - R[j][1];
-                    
-                    d = Math.abs(dx) + Math.abs(dy);
-                    if(matrix_weight[i][j]>=const_dmax)
-                    {
-                        score += matrix_weight[i][j] * d;
-                    } else {
-                        score += matrix_weight[i][j] * Math.min(d, d_max);
-                    }
+                    queue_temp.push(neighbors[queue_neighbors[i]][j]);
                 }
             }
         }
-        return score;
-    };
+        queue_neighbors = JSON.parse(JSON.stringify(queue_temp));
+        if(queue_neighbors.length){
+            DijkstrasAlgorithm(visited, d, k+1, neighbors,queue_neighbors, path);
+        }
+    }
 
     /**
-     * Counts how costs graph with respect to the alpha_nodes_number vertex
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @param {number} alpha_nodes_number - index of vertex
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} Cost graph 
+     * Start function to bypass the graph width (Dijkstra's algorithm)
+     * @param {array} neighbors - an array of arrays containing the neighbors of each vertex
+     * @return {array} It returns an array containing two other array: An array of "special numbers": [nodes_number: SpN, ...]
+     * and an array of lengths of optimal routes between all vertices
      */
-    function WeightAlphaR(R, alpha_nodes_number, matrix_weight){
-        var score = 0;
-        var d = 0;
-        for(var i = 0; i < R.length; i++){
-            if(matrix_weight[alpha_nodes_number][i] != 0){
-                var dx = R[alpha_nodes_number][0] - R[i][0];
-                var dy = R[alpha_nodes_number][1] - R[i][1];
-                
-                d = Math.abs(dx) + Math.abs(dy);
-                if(matrix_weight[alpha_nodes_number][i]>=const_dmax)
-                {
-                    score += matrix_weight[alpha_nodes_number][i] * d;
-                } else {
-                    score += matrix_weight[alpha_nodes_number][i] * Math.min(d, d_max);
+    function MainDijkstrasAlgorithm(neighbors){
+        /*
+         An array of "special numbers": [nodes_number: SpN, ...]
+         */
+        var weight_nodes = []; 
+
+        /*
+         An array of lengths of optimal routes between all vertices
+         */
+        var matrix_length = [];
+
+        /*
+         Initialize the output variables
+         */
+        for(var i = 0; i < nodes.length; i++){
+            weight_nodes[i] = 0;
+            var temp = [];
+            for(var j = 0; j < nodes.length; j++){
+                temp[j] = 0;
+            }
+            matrix_length[i] = temp;
+        }
+
+        /*
+         Start the crawl count width for each vertex
+         */
+        for (var i = 0; i < nodes.length; i ++){
+            /*
+             An array of visited nodes
+             */
+            var visited = [];
+            /*
+             An array of lengths of optimal paths from vertex i to all other
+             */
+            var d = [];
+            /*
+             An array of the best ways of vertex i to all other
+             */
+            var path = {};
+            /*
+             Initialize variables
+             */
+            for(var j = 0; j < nodes.length; j++){
+                visited[j] = false; // initial list of visited nodes is empty
+                d[j] = 2000000;
+                path[j] = [];
+            }
+            d[i] = 0;
+            var queue_neighbors = [];
+            queue_neighbors.push(i);
+
+            DijkstrasAlgorithm(visited, d, 1, neighbors,queue_neighbors, path);
+
+            /*
+             We take out of "path" set of weights
+             */
+            for(var j in path){
+                for(var k = 0; k < path[j].length; k++){
+                    var node_temp = path[j][k];
+                    weight_nodes[node_temp]++;
+                }
+            }
+            /*
+             Fill the matrix lengths optimal ways
+             */
+            for(var j = 0; j < d.length; j++){
+                matrix_length[i][j] = d[j];
+            }
+        }
+        /*
+         average the results
+         */
+        for(var i = 0; i < weight_nodes.length; i++){
+            weight_nodes[i] /= (nodes.length-1);
+        }
+
+        return [weight_nodes, matrix_length];
+    }
+
+    /**
+     * Specifies the appeal of the grid points for the vertices of the graph
+     * @param {number} x             - coordinate
+     * @param {number} y             - coordinate
+     * @param {number} alpha         - number-node for drawing
+     * @param {array} R              - an array vertex drawing with their coordinates
+     * @param {array} weight_nodes   - an array with "special numbers"
+     * @param {array} matrix_length  - an array of lengths of optimal routes between all vertices
+     */
+    function AppealPoint(x, y, alpha, R, weight_nodes, matrix_length){
+        var appeal = 0;
+        for(var i = 0; i < nodes.length; i++){
+            if(R[i]){
+                var SpN_i = weight_nodes[i];
+                var SpN_alpha = weight_nodes[alpha];
+                var k = matrix_length[alpha][i];
+                var length = Math.sqrt((R[i][0] - x)*(R[i][0] - x) + (R[i][1] - y)*(R[i][1] - y));
+
+                var min = SpN_i > SpN_alpha ? SpN_alpha : SpN_i;
+                min = Math.abs(SpN_i - SpN_alpha) > min ? Math.floor(min) : Math.floor(Math.abs(SpN_i - SpN_alpha));
+                min = min == 0 ? 1 : min;
+                var hit = (length >= k); 
+                if(hit){
+                    var l = (length / k) > 1 ? 1 : (length / k);
+                    var Di = Math.abs(SpN_i - SpN_alpha)  / k / l;
+                    var l1 = Math.abs(SpN_i - SpN_alpha) /k <= length ? (min + 1) / SpN_i: Math.abs(SpN_i - SpN_alpha) /k;
+                    appeal += (l1 / length / k) + l /SpN_i ;
+                } else{
+                    var l = (length / k) > 1 ? 1 : (length / k);
+                    var l1 = Math.abs(SpN_i - SpN_alpha) /k <= length ? (min - 1) / SpN_i : Math.abs(SpN_i - SpN_alpha) /k;
+                    appeal -= (l1 / length / k ) - l / SpN_i  ;
                 }
             }
         }
-        return score;
-    };
+        return appeal;
+    }
 
     /**
-     * Calculate a set of free points
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @return {array} set of free points
+     * The function sets the coordinates of all vertices of the graph
+     * @param {array} weight_nodes       - an array with "special numbers"
+     * @param {array} matrix_length      - an array of lengths of optimal routes between all vertices
+     * @param {array} neighbors          - an array of arrays containing the neighbors of each vertex
+     * @param {array} number_nodes_label - an array where each vertex name is associated its number
      */
-    function VacantPoint(R){
-        var vacant_point = [];
-        for(var x = 0; x < size_temp; x++){
-            for(var y = 0; y <size_temp; y++){
-                var key = x + "_" + y;
-                vacant_point[key] = [x, y];
-            }
-        }
-        for (var i = 0; i < R.length; i++){
-            var key = R[i][0] + "_" + R[i][1];
-            delete vacant_point[key];
-        }
-        return vacant_point;
-    };
+    function Drawing(weight_nodes, matrix_length, neighbors, number_nodes_label){
+        var x_min = 0, x_max = 0, y_min = 0, y_max = 0, delta = 0;
 
-    /**
-     * Randomly place the vertices on the grid
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @return {array} new an array of vertex coordinates 
-     */
-    function RandomLayoutR(R){
-        var R_temp = JSON.parse(JSON.stringify(R));
-        var map = {};
-        for(var i = 0; i < R.length; i++){
-            while (true) {
-                var x = Math.floor(size_temp * Math.random());
-                var y = Math.floor(size_temp * Math.random());
-                var key = x + " " + y;
+        var size = Math.floor(1.5 * Math.sqrt(nodes.length))
+        
+        /*
+         The number vertex are not drawn
+         -1 As the one the nodes draw
+         */
+        var not_painted_vertex = nodes.length - 1;
+        
+        /*
+         not an empty point on the grid
+         */
+        var busy_point = {};
 
-                if (!map[key]) {
-                    map[key] = true;
-                    R_temp[i][0] = x;
-                    R_temp[i][1] = y;
+        var R = [];
+        for(var i = 0; i < nodes.length; i++){
+            R[i] = false;
+        }
+
+        /*
+         Arranges neighbors ascending "special number"
+         */
+        for(var i = 0; i < neighbors.length; i++){
+            neighbors[i].sort(function(a,b){ return weight_nodes[a] - weight_nodes[b]; });
+        }
+        
+        /*
+         We create an array of vertices and sort them in descending order of "special numbers"
+         */
+        var vertex = [];
+        for(var i = 0; i < nodes.length; i++){
+            vertex[i] = i;
+        }
+        vertex.sort(function(a,b){ return weight_nodes[b] - weight_nodes[a]; });
+        
+        
+        /*
+         the first vertex coordinates manually set
+         */
+        R[vertex[0]] = [0,0];
+        busy_point[0+" "+0] = true;
+ 
+        while(not_painted_vertex){
+            var max_temp = -Infinity;
+            var p_coord = [0,0];
+            var alpha = 0;
+
+            /*
+             Select the nodes, for which we seek the coordinates
+             */
+            for(var i = 0; i < vertex.length; i++){
+                var flag = false;
+                alpha = vertex[i];
+                if(!R[alpha]){
                     break;
                 }
-            }
-        };
-        return R_temp;
-    };
-
-    /**
-     * Move casual tops, in a randomly selected spot available
-     * 
-     * @param {array} R - an array of vertex coordinates 
-     * @param {nuumber} p - the likelihood of selecting the vertex
-     * @return {array} new an array of vertex coordinates 
-     */
-    function Neighbor(R, p){
-        var R_1 = JSON.parse(JSON.stringify(R));
-        var map_vacant = VacantPoint(R_1);
-        for(var i = 0; i < R_1.length; i++) {
-            var e = R_1[i];
-            var Eps = Math.random();
-            if(Eps <= p){
-                while (true) {
-                    var x = Math.floor(size_temp * Math.random());
-                    var y = Math.floor(size_temp * Math.random());
-                    var key = x + "_" + y;
-
-                    if (map_vacant[key]) {
-                        var key_temp = e[0] + "_" + e[1];
-                        delete map_vacant[key];
-                        map_vacant[key_temp] = [x,y];
-                        R_1[i][0] = x;
-                        R_1[i][1] = y;
+                for(var j = 0; j < neighbors[vertex[i]].length; j++){
+                    alpha = neighbors[vertex[i]][j];
+                    if(!R[alpha]){
+                        var flag = true;
                         break;
                     }
                 }
-            }
-        };
-        return R_1;
-    };
-
-    /**
-     * Cost of distance between two vertices
-     * 
-     * @param {array} R - an array of vertex coordinates
-     * @param {number} alpha_number - index of vertex
-     * @param {number} beta_number - index of vertex
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} Cost graph 
-     */
-    function WeightRAlphaBeta(R, alpha_number, beta_number, matrix_weight){
-        var score = 0;
-        if(matrix_weight[alpha_number][beta_number] != 0) {
-            var dx = R[alpha_number][0] - R[beta_number][0];
-            var dy = R[alpha_number][1] - R[beta_number][1];
-            // d = Math.sqrt(dx*dx + dy*dy);
-            d = Math.abs(dx) + Math.abs(dy);
-            if(matrix_weight[alpha_number][beta_number]>=const_dmax){
-                score += matrix_weight[alpha_number][beta_number] * d;
-            } else {
-                score += matrix_weight[alpha_number][beta_number] * Math.min(d, d_max);
-            }
-        }
-        return score;
-    };
-
-    /**
-     * Now we deduce the update formulas for the Δ-matrix. Suppose a node β 
-     * moving to a point q is the best least change of layout R, i.e.
-     * 
-     * @param {array} R - an array of vertex coordinates
-     * @param {number} beta_number - index of vertex
-     * @param {array} q_point - vertex coordinates
-     * @param {number} alpha_number - index of vertex
-     * @param {array} p_point - vertex coordinates
-     * @param {array} matrix_delta - delta matrix
-     * @param {array} matrix_weight - Matrix weights
-     * @return {number} a new value for the element delta matrix
-     */
-    function DeltaUpdate(R, beta_number, q_point, alpha_number, p_point, matrix_delta, matrix_weight){
-        var res; 
-        var p = p_point[0] + "_" + p_point[1];
-        var q = q_point[0] + "_" + q_point[1];
-        if(alpha_number == beta_number){
-            res = matrix_delta[beta_number][p] - matrix_delta[beta_number][q];
-        } else if ((alpha_number != beta_number) && (p != (R[beta_number][0] +"_"+R[beta_number][1]))) {
-            var TERM = WeightRAlphaBeta(Operator(Operator(R, beta_number, q_point), alpha_number, p_point), alpha_number, beta_number, matrix_weight);
-                    TERM -= WeightRAlphaBeta(Operator(R, beta_number, q_point), alpha_number, beta_number, matrix_weight);
-                    TERM -= WeightRAlphaBeta(Operator(R, alpha_number, p_point), alpha_number, beta_number, matrix_weight);
-                    TERM += WeightRAlphaBeta(R, alpha_number, beta_number, matrix_weight);
-            res = matrix_delta[alpha_number][p] + TERM;  
-        } else if((alpha_number != beta_number) && (p == (R[beta_number][0] +"_"+R[beta_number][1]))) {
-            res = WeightAlphaR(Operator(Operator(R, beta_number, q_point), alpha_number, p_point), alpha_number, matrix_weight);
-            res -= WeightAlphaR(Operator(R, beta_number, q_point), alpha_number, matrix_weight);
-        }
-        return res;
-    };
-
-    /**
-     * Search for a local minimum
-     * 
-     * @param {array} R_temp - an array of vertex coordinates
-     * @param {array} matrix_weight - matrix weights
-     * @param {array} number_nodes_label - index of vertex
-     * @return {array} Returns a new layout and its cost
-     */
-    function LocalMin(R_temp, matrix_weight, number_nodes_label){
-        R = JSON.parse(JSON.stringify(R_temp));
-
-        var f_0 = WeightR (R, matrix_weight);
-        var vacant_point = VacantPoint(R);
-        var beta_number = 0, q_point, q;
-        var beta1_number = 0, q1_point, q1;
-        var p_point;
-        var matrix_delta = [];
-        var delta_min = 0;
-        var delta1_min;
-        
-
-        for(var alpha_number = 0; alpha_number < nodes.length; alpha_number++){
-            matrix_delta[alpha_number] = {};
-            var f_R = WeightAlphaR(R, alpha_number, matrix_weight);
-            for(var p in vacant_point){
-                p_point = vacant_point[p];
-                matrix_delta[alpha_number][p] = WeightAlphaR(Operator(R, alpha_number, p_point), alpha_number, matrix_weight);
-                matrix_delta[alpha_number][p] -= f_R;  
-                if(matrix_delta[alpha_number][p] < delta_min){
-                    delta_min = matrix_delta[alpha_number][p];
-                    beta_number = alpha_number;
-                    q = p;
-                    q_point = p_point;
+                if(flag){
+                    break;
+                }
+            } 
+            
+            /*
+             Determine the delta
+             */
+            var temp_array = [];
+            for(var i = 0; i < weight_nodes.length; i++){
+                if(R[i]){
+                    temp_array.push(weight_nodes[i]);
                 }
             }
-        }
-        
-        while(delta_min < 0){ 
-            var matrix_delta_1 = []; 
-            delta1_min = 0;
+            temp_array.sort(function(a, b){ return b - a; });
+            delta = temp_array[0];
+            
+            
+            x_min = p_coord[0] < x_min ? p_coord[0] : x_min;
+            x_max = p_coord[0] > x_max ? p_coord[0] : x_max;
+            y_min = p_coord[1] < y_min ? p_coord[1] : y_min;
+            y_max = p_coord[1] > y_max ? p_coord[1] : y_max;
+            x_min = -size > x_min - delta ? -size : x_min;
+            x_max = size < x_max + delta ? size : x_max;
+            y_min = -size > y_min - delta ? -size : y_min;
+            y_max = size < y_max + delta? size : y_max;
+            delta = (x_min == -size) || (x_max == size) || (y_min == -size) ||( y_max == size) ? 0 : delta;
 
-            /*
-            Change the delta matrix
-             */
-            for(var alpha_number = 0; alpha_number < nodes.length; alpha_number++){
-                matrix_delta_1[alpha_number] = {};
-                for(var p in vacant_point){ 
-                    if(p == q) continue ;
-                    p_point = vacant_point[p];
-                    matrix_delta_1[alpha_number][p] = DeltaUpdate(R, beta_number, q_point, alpha_number, p_point, matrix_delta, matrix_weight);
-                    
-                    if(matrix_delta_1[alpha_number][p] < delta1_min){
-                        delta1_min = matrix_delta_1[alpha_number][p];
-                        beta1_number = alpha_number;
-                        q1 = p;
-                        q1_point = p_point;
+            for(var x = x_min - delta; x <= x_max + delta; x++){
+                for(var y = y_min - delta; y <= y_max + delta; y++){
+                    if(!busy_point[x + " " + y]){
+                        var temp = AppealPoint(x, y, alpha, R, weight_nodes, matrix_length); 
+                        if(temp >= max_temp){
+                            max_temp = temp;
+                            p_coord = [x, y];
+                        }
                     }
                 }
-
-                /*
-                Calculating the cost of the nodes when moving to a new free point. 
-                At this point, this point is not yet available and because of this 
-                it is not processed in the main loop.
-                 */
-                var p = R[beta_number][0] +"_"+R[beta_number][1];
-                p_point = R[beta_number];
-                matrix_delta_1[alpha_number][p] = DeltaUpdate(R, beta_number, q_point, alpha_number, p_point, matrix_delta, matrix_weight);
-                
-                if(matrix_delta_1[alpha_number][p] < delta1_min){
-                    delta1_min = matrix_delta_1[alpha_number][p];
-                    beta1_number = alpha_number;
-                    q1 = p;
-                    q1_point = p_point;
-                }
             }
+            R[alpha] = p_coord;
             
-            matrix_delta_1[beta_number][R[beta_number][0] +"_"+R[beta_number][1]] = - delta_min;
-            
-            /*
-            Change set vacant spots. And change the graph P, acting on his operator "Rearranged tops."
-             */
-            vacant_point[R[beta_number][0] +"_"+R[beta_number][1]] = R[beta_number];
-            R = Operator(R, beta_number, q_point);
-            delete vacant_point[q];
-            
-            matrix_delta = matrix_delta_1;
-            
-            beta_number = beta1_number;
-            q_point = q1_point;
-            q = q1;
-            delta_min = delta1_min; 
+            busy_point[p_coord[0] + " " + p_coord[1]] = true;
+            not_painted_vertex--;
         }
-        return [R, f_0 + delta1_min];
-    };
 
-    /**
-     * Search low
-     * 
-     * @param  {number} T_max - the initial temperatures 
-     * @param  {number} T_min - the terminating temperatures
-     * @param  {array} R - an array of vertex coordinates
-     * @param  {number} n_e - the number of repetitive trials
-     * @param  {number} r_c - the cooling rate
-     * @param  {number} p - the layout perturbation rate is set to be
-     * @param  {array} matrix_weight - matrix weights
-     * @param  {array} number_nodes_label - index of vertex
-     * @return {array} minimal layout
-     */
-    function gridLayout(T_max, T_min, R, n_e, r_c, p, matrix_weight, number_nodes_label){
-        /*
-        An array with a random coordinates of vertices
-         */
-        R = RandomLayoutR(R);
-
-        var T = T_max;
-        var f;
-
-        var local_res = LocalMin(R, matrix_weight, number_nodes_label);
-        var f_min = f = local_res[1];
-        var R_min = local_res[0];
-        while(T > T_min){
-            for(var i = 0; i < n_e; i++){
-                /*
-                We change the coordinates of some vertices of the graph "R" with probability "p"
-                 */
-                var R1 = Neighbor(R, p);
-                var f1 = LocalMin(R, matrix_weight, number_nodes_label);
-                var Eps = Math.random();
-                if(Eps < Math.exp((f - f1) / T)){
-                    f = f1;
-                    R = R1;
-                }
-                if(f < f_min){
-                    f_min = f;
-                    R_min = R;
-                }
-            }
-            T = r_c * T;
+        for(var i = 0; i < R.length; i++){
+            R[i][0] += Math.abs(x_min) + delta + 1; //+1 to pull back from the edge
+            R[i][1] += Math.abs(y_min) + delta + 1;
         }
-       
-        return R_min;
-    };
+        
+        return R;
+    }
 
-    /*
-        if the weight between the vertices less than "const_dmax", then select the minimum value 
-        between "d_max" and the distance between the vertices 
-     */
-    var const_dmax = 0;
-    var d_max = 1;
+
 
     var size_temp;
-
     this.apply = function() { 
         
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        /// main
+        ///////////////////////////////////////////////////////////////////////////////////////////////
         size_temp = Math.floor(1.5 * Math.sqrt(nodes.length));
+
         /*
         An associative array of vertex indices of names
          */
@@ -1770,39 +1918,437 @@ ccNetViz.layout.grid = function(nodes, edges) {
             number_nodes_label[nodes[i].label] = i;
         }
 
-        /*
-        The weight matrix based on M
-         */
-        var matrix_weight = WalkDepth(edges, number_nodes_label);
-
-        var R = [];
-        for(var i = 0; i < nodes.length; i++){
-            R[i] = [0,0];
-        }
         
-        var array_f = [];
-        for(var i = 0; i < 10; i++){
-            R = RandomLayoutR(R);
-            array_f[i] = WeightR (R, matrix_weight);
-        }
 
-        /*
-        simulation parameters
-         */
-        var T_min = 0.1;
-        var f_max = Math.max.apply(null, array_f);
-        var f_min = Math.min.apply(null, array_f);
-        var T_max = (f_max - f_min) / 2;
-        var r_c = 0.8;
-        var n_e = 10;
-        var p = 0.55;
+        var neighbors = Neighbors(number_nodes_label);
+
+        var result = MainDijkstrasAlgorithm(neighbors);
+        var weight_nodes = result[0];
+        var matrix_length = result[1];
+
+        var R = Drawing(weight_nodes, matrix_length, neighbors, number_nodes_label);
         
-        var R_min = gridLayout(T_max, T_min, R, n_e, r_c, p, matrix_weight, number_nodes_label);
-
-        for(var i = 0; i < R_min.length; i++){
-            nodes[i].x = R_min[i][0];
-            nodes[i].y = R_min[i][1];
+        for(var i = 0; i < R.length; i++){
+            nodes[i].x = R[i][0];
+            nodes[i].y = R[i][1];
         } 
         return true;
     };
 };
+
+/**
+ *  Author: Alexei Nekrasov (znbiz, E-mail: nekrasov.aleks1992@gmail.com)
+ *  Font Generator atlas using SDF filter. The use of the SDF filter occurs on the GPU
+ *
+ * options = {
+ *          size: 50,
+ *          font_family: "Arial",
+ *          start: 1,
+ *          end: 256
+ *      }
+ */
+function generate_SDF_atlas_font(options){
+    /**
+     * The creation and initialization of context webgl. Creating shaders
+     * @param  {object} canvas - canvas
+     * @return {object} Return canvas
+     */
+    function init_gl(canvas) {
+
+        var shader_vs = ["attribute vec3 aVertexPosition;",
+            "varying vec2 vTextureCoords;",
+            "void main(void) {",
+            "    gl_Position = vec4(aVertexPosition, 1.0);",
+            "    vTextureCoords = 0.5 * vec2(aVertexPosition.x + 1.0, aVertexPosition.y + 1.0);",
+            "}"];
+
+        var shader_fs = ["precision highp float;",
+            "uniform vec2 uFloatTextureSize;",
+            "const int size = 20;",
+            "uniform sampler2D uSampler;",
+            "varying vec2 vTextureCoords;",
+            "void main(void) {",
+            "    float min = 99999.0;",
+            "    vec2 temp_coord;",
+            "    float d;",
+            "    float step = 1.0 / uFloatTextureSize[0];",
+            "    float neighborhood = 10.0 * step;", // The neighborhood search the nearest opposite point
+            "    temp_coord.x = vTextureCoords.x - neighborhood;",
+            "    if(texture2D(uSampler, vTextureCoords).r > 0.5){",
+            "        min = 1.0;",
+            "        for(int i = 0; i < size; i++) {",
+            "            temp_coord.y = vTextureCoords.y - neighborhood;",
+            "            for(int j = 0; j < size; j++) {",
+            "                if(texture2D(uSampler, temp_coord).r < 0.05){",
+            "                    d = pow(temp_coord.x - vTextureCoords.x, 2.0);",
+            "                    d += pow(temp_coord.y - vTextureCoords.y, 2.0);",
+            "                    if(d < min){",
+            "                        min = d;",
+            "                    }",
+            "                }",
+            "                temp_coord.y += step;",
+            "            }",    
+            "            temp_coord.x += step;",
+            "        }",
+            "        float min_temp = pow(min, 0.8);",
+            "        min = pow(min, step / min_temp );",
+            "        float st = 1.0 - pow(step, 0.46) * 3.5;",
+            "        min = (st + min);",
+            "        gl_FragColor = vec4(min, min, min, 1.0);",
+            "    } else {",
+            "        for(int i = 0; i < size; i++) {",
+            "            temp_coord.y = vTextureCoords.y - neighborhood;",
+            "            for(int j = 0; j < size; j++) {",
+            "                if(texture2D(uSampler, temp_coord).r > 0.95){",
+            "                    d = pow(temp_coord.x - vTextureCoords.x, 2.0);",
+            "                    d += pow(temp_coord.y - vTextureCoords.y, 2.0);",
+            "                    if(d < min){",
+            "                        min = d;",
+            "                    }",
+            "                }",
+            "                temp_coord.y += step;",                    
+            "            }",
+            "            temp_coord.x += step;",
+            "        }",   
+            "        min = pow(min, 0.23);",
+            "        min = 1.0 - min * 4.5;",
+            "        gl_FragColor = vec4(min, min, min, 1.0);",
+            "    }",
+            "}"];   
+
+        /**
+         * Function to create the webgl context
+         * @param  {object} canvas - canvas
+         * @return {object} webgl context
+         */
+        function initGL(canvas) {
+            var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+            var context = null;
+            for(var i = 0; i < names.length; i++) {
+                try {
+                    context = canvas.getContext(names[i], { antialias: false });
+                } catch(e) { }
+                if(context) {
+                    break;
+                }
+            }
+            if(context) {
+                context.viewportWidth = canvas.width;
+                context.viewportHeight = canvas.height;
+            } else {
+                alert("Failed to create webgl context");
+            }
+
+            return context;
+        }
+
+
+        /**
+         * Create shader
+         * @param  {const} type    - type shader (fragment or vertex)
+         * @param  {array} text_sh - text shader code
+         * @return {object} shader
+         */
+        function getShader(gl, type, text_sh) {
+            var str = "";
+            for(var i = 0; i < text_sh.length; i++) {
+                str += text_sh[i];
+            }
+
+            var shader;
+            shader = gl.createShader(type);
+
+            gl.shaderSource(shader, str);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                alert(gl.getShaderInfoLog(shader));
+                return null;
+            }
+
+            return shader;
+        }
+
+
+
+
+        function initShaders(gl) {
+
+            var fragmentShader = getShader(gl, gl.FRAGMENT_SHADER, shader_fs);
+            var vertexShader = getShader(gl, gl.VERTEX_SHADER, shader_vs);
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                alert("Could not initialise shaders");
+            }
+
+            gl.useProgram(shaderProgram);
+
+            shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+            return gl;
+        }
+
+        function initBuffers(gl) {
+            var vertices =[
+                    -1, -1, 0,
+                    -1, 1, 0,
+                    1, 1, 0,
+                    1, -1, 0
+                    ];
+            vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            vertexBuffer.itemSize = 3;
+
+            var indices = [0, 1, 2, 2, 3, 0];
+            indexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+            indexBuffer.numberOfItems = indices.length; 
+
+            return gl;
+        }
+
+        var gl = initGL(canvas);
+        gl = initShaders(gl);
+        gl = initBuffers(gl);
+        return {gl: gl, canvas: canvas};
+    }
+
+    /**
+     * Creating SDF atlas fonts and metrics for Atlas
+     * @param  {string} family_option      - type font
+     * @param  {array} chars_array_option - the character set
+     * @param  {number} size_font_option   - size font
+     * @param  {object} canvas             - canvas
+     * @param  {object} gl                 - context webgl
+     * @return {object} SDF atlas fonts and metrics for Atlas
+     */
+    function webGL_SDF(family_option, chars_array_option, size_font_option, canvas, gl) {
+
+        var chars_array = chars_array_option;
+        var delta = 8;
+        var family = family_option;
+        var metrics = {
+                family : family,
+                style  : "Regular",
+                size   : size_font,
+                chars  : {}
+        };
+        var size_font = size_font_option;
+        var delta_1 = size_font + 14;
+        var step   = delta_1; 
+        var shape  = [delta*delta_1, delta*delta_1];
+        canvas.width = shape[0];
+        canvas.height = shape[1] ;
+        var texture;
+        
+        /**
+         * Create atlas char and metrcs atlas
+         * @return {object} canvas
+         */
+        function create_atlas_char_and_metrcs_atlas(){
+
+            var canvas = document.createElement('canvas');
+            canvas.width  = shape[0];
+            canvas.height = shape[1];
+
+            var ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, shape[0], shape[1]);
+
+            ctx.font = size_font + 'px ' + family;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+
+
+            var half_step = step / 2;
+            var quarter_step = step / 4;
+            var x = half_step;
+            var y = half_step;
+            var x_result = 0;
+            var y_result = 0;
+            var chars = {};
+
+            for (var i = 0; i < chars_array.length; i++) {
+                var text = ctx.measureText(chars_array[i]); // TextMetrics object
+                var advance = text.width + quarter_step;
+                var padding = (step - advance) / 2;
+                padding = padding < 0 ? 0 : padding;
+                chars[chars_array[i]] = [step, step, padding, padding, advance, x_result, y_result];
+                ctx.fillText(chars_array[i], x, y);
+                
+                x_result += step;
+                if ((x += step) > shape[0] - half_step) {
+                    x = half_step;
+                    y += step;
+                    x_result = 0;
+                    y_result += step;
+                } 
+            }
+            metrics.chars = chars;
+            return canvas;
+        }
+
+    
+        function drawScene() {
+            gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.drawElements(gl.TRIANGLES, indexBuffer.numberOfItems, gl.UNSIGNED_SHORT,0);
+        }
+
+        function handleTextureLoaded(image, texture) {
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+            gl.uniform1i(shaderProgram.samplerUniform, 0);
+            var textureSizeLocation = gl.getUniformLocation(shaderProgram, "uFloatTextureSize");
+            gl.uniform2f(textureSizeLocation, image.width, image.height);
+        }
+
+        function setTextures(){
+            texture = gl.createTexture();
+            
+            image = create_atlas_char_and_metrcs_atlas(); 
+
+            handleTextureLoaded(image, texture);  
+            drawScene(); 
+        }
+
+        function webGLStart() {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+
+            gl.viewportWidth = shape[0];
+            gl.viewportHeight = shape[1];
+
+            setTextures();
+            return canvas;
+        }
+        
+        webGLStart();
+
+        return {metrics : metrics, canvas  : canvas};
+    }
+
+
+    /**
+     * It divides a character set for the portion to the graphics card does not fall
+     * @param  {number} number_char_portions - The number of characters on one canvas when sent to GPU
+     * @param  {string} family               - type font
+     * @param  {number} size                 - size font
+     * @param  {array} chars_array           - chars array
+     * @return {object} sdf canvas atlas and metrics atlas 
+     */
+    function divide_into_portions (number_char_portions, family, size, chars_array) {
+        var canvas = document.createElement('canvas');
+        var x = 0, y = 0;
+        // var delta = Math.floor(Math.sqrt(number_char_portions)+1);
+        // var delta_1 = size + Math.floor(size / 8);
+        var delta = 8;
+        var delta_1 = size + 14;
+        var shape_resultat  = [delta*delta_1, delta*delta_1];
+        canvas.width = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[0];
+        canvas.height = (Math.floor(Math.sqrt(chars_array.length / number_char_portions))+1) * shape_resultat[1];
+        var ctx = canvas.getContext('2d');
+        var metrics = {
+            family : family,
+            style  : "Regular",
+            size   : size,
+            chars  : {}
+        }
+
+
+        /*
+         Initialize the canvas for painting
+         */        
+        var canvas_atlas = document.createElement('canvas');
+        var gl_or_canvas = init_gl(canvas_atlas);
+        var gl = gl_or_canvas.gl;
+        var canvas_atlas = gl_or_canvas.canvas;
+
+        for(var i = 0; i < Math.floor(chars_array.length / number_char_portions) + 1; i++) {
+            /*
+             process the characters through a portion sdf 
+             */
+            var chars = [];
+            for(var j = 0; (j < number_char_portions) && (i * number_char_portions + j < chars_array.length); j++) {
+                chars[j] = chars_array[i * number_char_portions + j];
+            }
+
+            
+            var res = webGL_SDF(family, chars, size, canvas_atlas, gl);
+            ctx.drawImage(res.canvas, x, y);
+
+            /*
+             change the metric
+             */
+            for(var char in res.metrics.chars) {
+                metrics.chars[char] = res.metrics.chars[char];
+                metrics.chars[char][6] += y;
+                metrics.chars[char][5] += x;
+            }
+            if ((x += shape_resultat[0]) > canvas.width - shape_resultat[0]) {
+                x = 0;
+                y += shape_resultat[1];
+            } 
+        }
+
+        return {canvas: canvas, metrics: metrics}
+    }
+
+    /**
+     * Translate array of character codes in the character array
+     * @param {array} index_chars - code range
+     * @return {array} character array
+     */
+    function Chars_array(index_chars){
+
+        if (!Array.isArray(index_chars)) {
+            index_chars = String(index_chars).split('');
+        } else
+        if (index_chars.length === 2
+            && typeof index_chars[0] === 'number'
+            && typeof index_chars[1] === 'number'
+        ) {
+            var newchars = [];
+
+            for (var i = index_chars[0], j = 0; i <= index_chars[1]; i++) {
+                newchars[j++] = String.fromCharCode(i);
+            }
+        }
+        return newchars;
+    }
+    
+    
+    
+    var size   = options.size;
+    var chars  = [options.start, options.end];
+
+    var chars_array = Chars_array(chars);
+
+    var family = options.font_family;
+
+    var number_char_portions = options.number_char_portions;
+
+    var result = divide_into_portions (50, family, size, chars_array);
+
+    return {img : result.canvas, metrics: result.metrics};
+}
