@@ -13,10 +13,16 @@ ccNetViz = function(canvas, options) {
     var backgroundStyle = options.styles.background = options.styles.background || {};
     var backgroundColor = new ccNetViz.color(backgroundStyle.color || "rgb(255, 255, 255)");
 
+    
+
     var nodeStyle = options.styles.node = options.styles.node || {};
     nodeStyle.minSize = nodeStyle.minSize != null ? nodeStyle.minSize : 6;
     nodeStyle.maxSize = nodeStyle.maxSize || 16;
     nodeStyle.color = nodeStyle.color || "rgb(255, 255, 255)";
+    /*
+     Switch SDF text (znbiz)
+     */
+    nodeStyle.flagSDF  = options.SDF || true;
 
     if (nodeStyle.label) {
         var s = nodeStyle.label;
@@ -76,7 +82,6 @@ ccNetViz = function(canvas, options) {
             }
         };
 
-        // нормализация координат
         var normalize = function(a, b)  {
             var x = b.x - a.x;
             var y = b.y - a.y;
@@ -86,7 +91,6 @@ ccNetViz = function(canvas, options) {
 
         init();
 
-        //Располагаем вершины графа в одном из следующих фарианто силовой алгоритм, рандомный и на сетке
         layout && new ccNetViz.layout[layout](nodes, edges).apply() && ccNetViz.layout.normalize(nodes);
 
         scene.nodes.set(gl, options.styles, textures, nodes.length && !nodes[0].color ? nodes : [], function(style)  {return {
@@ -111,87 +115,65 @@ ccNetViz = function(canvas, options) {
             }};}
         );
 
-
-// texts[text] = result = {
-//                 width: char[0],
-//                 height: char[1],
-//                 left: char[5],
-//                 right: char[5] + char[0],
-//                 top: char[6],
-//                 bottom: char[6] + char[1],
-//                 width_char: char[4],
-//                 left_padding: char[2],
-//                 right_padding: char[3]
-//             };
-        // подготовка текста для рисования
         if (nodeStyle.label) {
             texts.clear();
             scene.labels.set(gl, options.styles, textures, nodes, function(style)  {
                 texts.setFont(style.font);
                 style.texture = texts.texture;
                 return {
-                    set: function(v, e, iViI)  { 
-                        // координаты узла
+                    set: function(v, e, iViI)  {
+                        
                         var x = e.x;
                         var y = e.y;
                         ccNetViz.primitive.vertices(v.position, iViI[0], x, y, x, y, x, y, x, y);
 
-                        var array_meta_char = [];
-                        var width = 0; 
-                        var height = 0;
-                        var left, right, bottom, top;
-                        for(var i = 0; i < e.label.length; i++) {
-                            var char = e.label[i];
-                            array_meta_char[i] = texts.get(char);
-                            width += array_meta_char[i].width;
-                            height = array_meta_char[i].height;
-                        }
-                            // console.log(JSON.parse(JSON.stringify(v.textureCoord)))
-                        var dx = x <= 0.5 ? 0 : -width;
-                        var dy = y <= 0.5 ? 0 : -height; 
-                        for(var i = 0; i < array_meta_char.length; i++) {
-                            width  = array_meta_char[i].width;
-                            height = array_meta_char[i].height;
-                            left   = array_meta_char[i].left;
-                            right  = array_meta_char[i].right;
-                            bottom = array_meta_char[i].bottom;
-                            top    = array_meta_char[i].top;
-                            ccNetViz.primitive.vertices(v.relative, iViI[0], dx, dy, width + dx, dy, width + dx, height + dy, dx, height + dy);
-                            ccNetViz.primitive.vertices(v.textureCoord, iViI[0], left, bottom, right, bottom, right, top, left, top);
-                            ccNetViz.primitive.quad(v.indices, iViI[0], iViI[1]);
-                            if(i < array_meta_char.length - 1){
-                                // iViI[0] += 4;
-                                // iViI[1] += 6;
+                        if (style.flagSDF) {
+                            var array_meta_char = [];
+                            var width = 0; 
+                            var height = 0;
+                            var left, right, bottom, top;
+
+                            for(var i = 0; i < e.label.length; i++) {
+                                var char           = e.label[i];
+                                array_meta_char[i] = texts.get(char);
+                                width             += array_meta_char[i].width;
+                                height             = array_meta_char[i].height;
                             }
-                            dx += width;
-                            // dy = height;
+
+                            var dx = x <= 0.5 ? 0 : -width;
+                            var dy = y <= 0.5 ? 0 : -height; 
+
+                            for(var i = 0; i < array_meta_char.length; i++) {
+                                width  = array_meta_char[i].width;
+                                height = array_meta_char[i].height;
+                                left   = array_meta_char[i].left;
+                                right  = array_meta_char[i].right;
+                                bottom = array_meta_char[i].bottom;
+                                top    = array_meta_char[i].top;
+                                ccNetViz.primitive.vertices(v.relative, iViI[0], dx, dy, width + dx, dy, width + dx, height + dy, dx, height + dy);
+                                ccNetViz.primitive.vertices(v.textureCoord, iViI[0], left, bottom, right, bottom, right, top, left, top);
+                                ccNetViz.primitive.quad(v.indices, iViI[0], iViI[1]);
+                                if(i < array_meta_char.length - 1){
+                                    iViI[0] += 4;
+                                    iViI[1] += 6;
+                                    ccNetViz.primitive.vertices(v.position, iViI[0], x, y, x, y, x, y, x, y);
+                                }
+                                dx += width; 
+                            }
+
+                        } else {
+                            var t = texts.get(e.label);
+                            var dx = x <= 0.5 ? 0 : -t.width;
+                            var dy = y <= 0.5 ? 0 : -t.height; 
+                            ccNetViz.primitive.vertices(v.relative, iViI[0], dx, dy, t.width + dx, dy, t.width + dx, t.height + dy, dx, t.height + dy);
+                            ccNetViz.primitive.vertices(v.textureCoord, iViI[0], t.left, t.bottom, t.right, t.bottom, t.right, t.top, t.left, t.top);
+                            ccNetViz.primitive.quad(v.indices, iViI[0], iViI[1]);
                         }
-                        // var t = texts.get(char);
-                        // var t = texts.get(e.label);
-                        // var dx = x <= 0.5 ? 0 : -t.width;
-                        // var dy = y <= 0.5 ? 0 : -t.height; 
-                        // ccNetViz.primitive.vertices(v.relative, iV, dx, dy, t.width + dx, dy, t.width + dx, t.height + dy, dx, t.height + dy);
-                        // ccNetViz.primitive.vertices(v.textureCoord, iV, t.left, t.bottom, t.right, t.bottom, t.right, t.top, t.left, t.top);
-                        // ccNetViz.primitive.quad(v.indices, iV, iI);
-                        // 
-                        // 
-                        // ccNetViz.primitive.vertices = function(buffer, iV) {
-                            //     for (var i = 2, j = 2 * iV, n = arguments.length; i < n; i++, j++) buffer[j] = arguments[i];
-                            // }
-
-                            // ccNetViz.primitive.indices = function(buffer, iV, iI) {
-                            //     for (var i = 3, j = iI, n = arguments.length; i < n; i++, j++) buffer[j] = iV + arguments[i];
-                            // }
-
-                            // ccNetViz.primitive.quad = function(buffer, iV, iI) {
-                            //     ccNetViz.primitive.indices(buffer, iV, iI, 0, 1, 2, 2, 3, 0);
-                            // }
                     }}
             });
             texts.bind();
         }
 
-        // подготовка рёбер для рисования
         scene.lines.set(gl, options.styles, textures, lines, function(style)  {return {
             set: function(v, e, iV, iI)  {
                 var s = e.source;
@@ -321,7 +303,7 @@ ccNetViz = function(canvas, options) {
     var gl = getContext();
     var extensions = ccNetViz.gl.initExtensions(gl, "OES_standard_derivatives");
     var textures = new ccNetViz.textures(options.onLoad || this.draw);
-    var texts = new ccNetViz.texts(gl);
+    var texts = new ccNetViz.texts(gl, nodeStyle.flagSDF);
     var scene = createScene.call(this);
 
 
@@ -340,7 +322,6 @@ ccNetViz = function(canvas, options) {
             "precision mediump float;",
             "uniform lowp sampler2D texture;",
             "uniform mediump vec4 color;",
-            // "vec4 u_color = vec4(0.0,0.0,0.0,1.0);",
             "float u_buffer = 0.6;",
             "float u_gamma = 3.8 * 1.4142;",
             "float u_debug = 1.0;",
@@ -349,18 +330,6 @@ ccNetViz = function(canvas, options) {
             "    float tx=texture2D(texture, tc).r;",
             "    float a=min((tx-u_buffer)*u_gamma, 1.0);",
             "    gl_FragColor=vec4(color.rgb,a*color.a);",
-
-            // "    vec4 colors = vec4(1.0,1.1,1.0,1.0);",
-            // "    float dist = texture2D(texture, tc).r;",
-            // "    if (u_debug > 0.0) {",
-            // "        gl_FragColor = vec4(dist, dist, dist, 1);",
-            // "    } else {",
-            // "        float alpha = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, dist);",
-            // "        vec4 temp = vec4(colors.rgb, alpha * colors.a);",
-            // "        u_buffer = 192.0 / 256.0;",
-            // "        alpha = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, dist);",
-            // "        gl_FragColor = vec4(colors.rgb, alpha * colors.a);",
-            // "    }",
             "}"
         ];
 
@@ -580,17 +549,6 @@ ccNetViz = function(canvas, options) {
         })
     );
     nodeStyle.label && scene.add("labels", new ccNetViz.primitive(gl, nodeStyle, "label", [
-            // "attribute vec2 position;",
-            // "attribute vec2 relative;",
-            // "attribute vec2 textureCoord;",
-            // "uniform mat4 transform;",
-            // "uniform float offset;",
-            // "uniform vec2 scale;",
-            // "varying vec2 tc;",
-            // "void main() {",
-            // "    gl_Position = transform * vec4(position.xy, 0, 1);",
-            // "    tc = textureCoord;",
-            // "}"
             "attribute vec2 position;",
             "attribute vec2 relative;",
             "attribute vec2 textureCoord;",
@@ -603,7 +561,7 @@ ccNetViz = function(canvas, options) {
             "                        + transform * vec4(position, 0,  1);",
             "   tc = textureCoord;",
             "}"
-        ], fsLabelsTexture, function(c)  {
+        ], (nodeStyle.flagSDF ? fsLabelsTexture : fsColorTexture), function(c)  {
             if (!getNodeSize(c)) return true;
             gl.uniform1f(c.shader.uniforms.offset, 0.5 * c.nodeSize);
             gl.uniform2f(c.shader.uniforms.scale, 1 / c.width, 1 / c.height);
@@ -863,6 +821,7 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
 
     this.set = function(gl, styles, textures, data, get)  {
         var parts = {};
+
         for (var i = 0; i < data.length; i++) {
             var e = data[i];
             var part = parts[e.style] = parts[e.style] || [];
@@ -882,7 +841,7 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
                 e.indices = new Uint16Array(nI);
                 nV *= filler.numVertices;
                 for (var a in shader.attributes) e[a] = new Float32Array(shader.attributes[a].size * nV);
-            }
+            } 
         };
 
         var store = function(section)  {
@@ -897,6 +856,7 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
             }
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.indices);
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, e.indices, gl.STATIC_DRAW);
+            
             b.numIndices = iI;
             b.numVertices = iV;
             section.buffers.push(b);
@@ -905,7 +865,6 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
 
         var createStyle = function(style)  {
             var result = {};
-
             var copy = function(s)  {
                 if (s) for (var p in s) result[p] = s[p];
             };
@@ -934,18 +893,30 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
             filler.numVertices = filler.numVertices || 4;
             filler.numIndices = filler.numIndices || 6;
 
-               // console.log(iB)
             var part = parts[p];
-            init(filler, part.length);
+
+            /*
+             Increase the buffer for writing text letter by letter (znbiz)
+             */
+            var k = 0;
+            if(baseStyle.flagSDF) {
+                for(var i = 0; i < part.length; i++) {
+                    if(part[i].label) {
+                        k += 0.5 * part[i].label.length;
+                    }
+                }
+            }
+            
+            init(filler, part.length + k);
             var max = ccNetViz.primitive.maxBufferSize - filler.numVertices;
             for (var i = 0; i < part.length; i++, iV += filler.numVertices, iI += filler.numIndices) {
                 if (iV > max) { 
                     store(section);
-                console.log(1)
-                    init(filler, part.length);
+                    init(filler, part.length + k);
                 }
+
                 /*
-                 Изменил часть кода чтобы заработало SDF
+                 Process the names of units and ourselves nodes (znbiz)
                  */
                 if(part[i].label) {
                     var iViI = [iV, iI];
@@ -958,7 +929,7 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
             }
             store(section);
 
-            function add() {
+            function add() { 
                 sections.push(this);
             }
             var addSection = add.bind(section);
@@ -989,7 +960,7 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
 
         gl.uniformMatrix4fv(shader.uniforms.transform, false, context.transform);
 
-        sections.forEach(function(section)  {
+        sections.forEach(function(section)  { 
             if (section.style.texture) {
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, section.style.texture);
@@ -1068,88 +1039,142 @@ ccNetViz.textures = function(onLoad) {
     }
 }
 
-ccNetViz.texts = function(gl) {
+ccNetViz.texts = function(gl, flagSDF) {
 
-    var size;
+    if (flagSDF) { 
+        var size;
 
-    var canvas = document.createElement("canvas");
+        var canvas = document.createElement("canvas");
 
-    var rendered, texts;
-    var x, y, height;
+        var rendered, texts;
+        var x, y, height_font;
 
-    var metrics, result;
-    var options = {
-            size: 50,
-            font_family: "Arial",
-            start: 1,
-            end: 256
-        }
+        var metrics, result;
+        var options = {
+                size: 50,
+                font_family: "Arial",
+                start: 1,
+                end: 256
+            }
 
-    this.texture = gl.createTexture();
+        this.texture = gl.createTexture();
 
-    this.clear = function()  {
-        rendered = {};
-        height = x = y = 0;
-    };
+        this.clear = function()  {
+            rendered = {};
+            height_font = x = y = 0;
+        };
 
-    this.setFont = function(font)  {
-        rendered[font] = texts = rendered[font] || {};
-        x = 0;
-        y += height;
-        height = +/(\d+)px/.exec(font)[1] + 1;
+        this.setFont = function(font)  {
+            rendered[font] = texts = rendered[font] || {};
+            x = 0;
+            y += height_font;
+            height_font = +/(\d+)px/.exec(font)[1] + 1;
 
-        options.font_family = /\s(\D\S\w+),/.exec(font)[1];
+            options.font_family = /\s(\D\S\w+),/.exec(font)[1];
 
-        result =  generate_SDF_atlas_font(options); 
+            result =  ccNetViz.texts.generateSDFatlas(options); 
 
-        canvas = result.img;
-        metrics = result.metrics;
-        canvas.style.width = canvas.style.height = canvas.width + 'px';
+            canvas = result.img;
+            metrics = result.metrics;
+            canvas.style.width = canvas.style.height_font = canvas.width + 'px';
+            canvas.style.display = "none";
+            document.body.appendChild(canvas);
+            size = canvas.width;
+        };
+
+        this.get = function(text)  {
+            var result = texts[text];
+            if (!result) {
+                var char = metrics.chars[text];
+                texts[text] = result = {
+                    width: char[4] / 50 * height_font,
+                    height: char[1] / 50 * height_font,
+                    left: (char[5] + char[2]) / size,
+                    right: (char[5] + char[2] + char[4]) / size,
+                    top: char[6] / size,
+                    bottom: (char[6] + char[1]) / size
+                };
+            }
+            return result;
+        };
+
+        this.bind = function()  { 
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, canvas);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        }.bind(this);
+    } else {
+        var size = 1024
+
+        var canvas = document.createElement("canvas");
+        canvas.width = canvas.height = size;
+        canvas.style.width = canvas.style.height = size + 'px';
         canvas.style.display = "none";
         document.body.appendChild(canvas);
-        size = canvas.width;
 
-    };
+        var context = canvas.getContext('2d');
+        context.fillStyle = "white";
+        context.textAlign = "left";
+        context.textBaseline = "top";
 
-    this.get = function(text)  {
-        var result = texts[text];
-        if (!result) {
-            var char = metrics.chars[text];
+        var rendered, texts;
+        var x, y, height;
+
+        this.texture = gl.createTexture();
+
+        this.clear = function()  {
+            rendered = {};
+            context.clearRect(0, 0, size, size);
+            height = x = y = 0;
+        };
+
+        this.setFont = function(font)  {
+            rendered[font] = texts = rendered[font] || {};
+            context.font = font;
+            x = 0;
+            y += height;
+            height = +/(\d+)px/.exec(font)[1] + 1;
+        };
+
+        this.get = function(text)  {
+            var result = texts[text];
+            if (!result) {
+                var width = context.measureText(text).width;
+                if (x + width > size) {
+                    x = 0;
+                    y += height;
+                }
+                
+                context.fillText(text, x, y);
+                texts[text] = result = {
+                    width: width,
+                    height: height,
+                    left: x / size,
+                    right: (x + width) / size,
+                    top: y / size,
+                    bottom: (y + height) / size
+                };
+                x += width;
+            }
+            return result;
+        };
+
+        this.bind = function()  { 
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
             
-            texts[text] = result = {
-                width: char[0],
-                height: char[1],
-                left: char[5] / size,
-                right: (char[5] + char[0]) / size,
-                top: char[6] / size,
-                bottom: (char[6] + char[1]) / size,
-                width_char: char[4],
-                left_padding: char[2],
-                right_padding: char[3]
-            };
-        }
-        return result;
-    };
-
-    this.bind = function()  { 
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, canvas);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        
-
-        // gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    
-        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-        // gl.bindTexture(gl.TEXTURE_2D, null);
-    }.bind(this);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+        }.bind(this);
+    }
 }
 
 
@@ -1858,7 +1883,7 @@ ccNetViz.layout.grid = function(nodes, edges) {
  *          end: 256
  *      }
  */
-function generate_SDF_atlas_font(options){
+ccNetViz.texts.generateSDFatlas = function(options){
     /**
      * The creation and initialization of context webgl. Creating shaders
      * @param  {object} canvas - canvas
