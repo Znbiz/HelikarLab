@@ -902,7 +902,7 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
             if(baseStyle.flagSDF) {
                 for(var i = 0; i < part.length; i++) {
                     if(part[i].label) {
-                        k += 0.5 * part[i].label.length;
+                        k +=  part[i].label.length;
                     }
                 }
             }
@@ -1087,10 +1087,10 @@ ccNetViz.texts = function(gl, flagSDF) {
             if (!result) {
                 var char = metrics.chars[text];
                 texts[text] = result = {
-                    width: char[4] / 50 * height_font,
+                    width: (char[4] - char[4] / 3) / 50 * height_font,
                     height: char[1] / 50 * height_font,
-                    left: (char[5] + char[2]) / size,
-                    right: (char[5] + char[2] + char[4]) / size,
+                    left: (char[5] + char[2] + char[4] / 6) / size,
+                    right: (char[5] + char[2] + char[4] - char[4] / 6) / size,
                     top: char[6] / size,
                     bottom: (char[6] + char[1]) / size
                 };
