@@ -322,14 +322,14 @@ ccNetViz = function(canvas, options) {
             "precision mediump float;",
             "uniform lowp sampler2D texture;",
             "uniform mediump vec4 color;",
-            "float u_buffer = 0.6;",
-            "float u_gamma = 3.8 * 1.4142;",
-            "float u_debug = 1.0;",
+            "uniform mediump float height_font;",
+            "float u_buffer = 192.0 / 256.0;",
+            "float u_gamma = 4.0 * 1.4142 / height_font;",
             "varying mediump vec2 tc;",
             "void main() {",
             "    float tx=texture2D(texture, tc).r;",
-            "    float a=min((tx-u_buffer)*u_gamma, 1.0);",
-            "    gl_FragColor=vec4(color.rgb,a*color.a);",
+            "    float a= smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, tx);",
+            "    gl_FragColor=vec4(color.rgb, a * color.a);",
             "}"
         ];
 
@@ -564,6 +564,8 @@ ccNetViz = function(canvas, options) {
         ], (nodeStyle.flagSDF ? fsLabelsTexture : fsColorTexture), function(c)  {
             if (!getNodeSize(c)) return true;
             gl.uniform1f(c.shader.uniforms.offset, 0.5 * c.nodeSize);
+            var height_font = +/(\d+)px/.exec(c.style.font)[1] + 1; 
+            gl.uniform1f(c.shader.uniforms.height_font, height_font * 2);
             gl.uniform2f(c.shader.uniforms.scale, 1 / c.width, 1 / c.height);
             ccNetViz.gl.uniformColor(gl, c.shader.uniforms.color, c.style.color);
         })
@@ -1051,7 +1053,7 @@ ccNetViz.texts = function(gl, flagSDF) {
 
         var metrics, result;
         var options = {
-                size: 50,
+                size: 100,
                 font_family: "Arial",
                 start: 1,
                 end: 256
@@ -1068,7 +1070,7 @@ ccNetViz.texts = function(gl, flagSDF) {
             rendered[font] = texts = rendered[font] || {};
             x = 0;
             y += height_font;
-            height_font = +/(\d+)px/.exec(font)[1] + 1;
+            height_font = (+/(\d+)px/.exec(font)[1] + 1) / 2;
 
             options.font_family = /\s(\D\S\w+),/.exec(font)[1];
 

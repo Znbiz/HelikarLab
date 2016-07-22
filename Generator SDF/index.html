@@ -76,22 +76,51 @@
         ];
 
         var shader_fs = [
+            // "precision mediump float;",
+            // "uniform lowp sampler2D u_texture;",
+            // "uniform mediump vec4 u_color;",
+            // // "vec4 u_color = vec4(0.0,0.0,0.0,1.0);",
+            // "float u_buffer = 0.6;",
+            // "float u_gamma = 3.8 * 1.4142;",
+            // "float u_debug;",
+            // "varying mediump vec2 v_texcoord;",
+            // "void main() {",
+            // "    float tx=texture2D(u_texture, v_texcoord).r;",
+            // "    float a=min((tx-u_buffer)*u_gamma, 1.0);",
+            // // "    a = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, tx);",
+            // "    gl_FragColor=vec4(u_color.rgb, a * u_color.a);",
+            // "}"
             "precision mediump float;",
-            "uniform sampler2D u_texture;",
-            "uniform vec4 u_color;",
-            "uniform float u_buffer;",
+            "uniform lowp sampler2D u_texture;",
+            // "uniform mediump vec4 u_color;",
+            "vec4 u_color = vec4(0.0,0.0,0.0,1.0);",
+            "float u_buffer = 192.0 / 256.0;",
+            // "float u_gamma = 4.0 * 1.4142 / 128.0;",
+            // "uniform float u_buffer;",
             "uniform float u_gamma;",
-            "uniform float u_debug;",
-            "varying vec2 v_texcoord;",
+            "varying mediump vec2 v_texcoord;",
             "void main() {",
-            "    float dist = texture2D(u_texture, v_texcoord).r;",
-            "    if (u_debug > 0.0) {",
-            "        gl_FragColor = vec4(dist, dist, dist, 1);",
-            "    } else {",
-            "        float alpha = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, dist);",
-            "        gl_FragColor = vec4(u_color.rgb, alpha * u_color.a);",
-            "    }",
+            "    float tx=texture2D(u_texture, v_texcoord).r;",
+            // "    float a=min((tx-u_buffer)*u_gamma, 1.0);",
+            "    float a = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, tx);",
+            "    gl_FragColor=vec4(u_color.rgb, a * u_color.a);",
             "}"
+            // "precision mediump float;",
+            // "uniform sampler2D u_texture;",
+            // "uniform vec4 u_color;",
+            // "uniform float u_buffer;",
+            // "uniform float u_gamma;",
+            // "uniform float u_debug;",
+            // "varying vec2 v_texcoord;",
+            // "void main() {",
+            // "    float dist = texture2D(u_texture, v_texcoord).r;",
+            // "    if (u_debug > 0.0) {",
+            // "        gl_FragColor = vec4(dist, dist, dist, 1);",
+            // "    } else {",
+            // "        float alpha = smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, dist);",
+            // "        gl_FragColor = vec4(u_color.rgb, alpha * u_color.a);",
+            // "    }",
+            // "}"
         ]
 
         /*
@@ -100,7 +129,7 @@
         var gl, shaderProgram;
         var scale = 1;
         var options = {
-            size: 50,
+            size: 100,
             font_family: "Arial",
             start: 1,
             end: 256
@@ -392,12 +421,12 @@
                 gl.vertexAttribPointer(shaderProgram.a_texcoord, 2, gl.FLOAT, false, 0, 0);
 
                 gl.uniform4fv(shaderProgram.u_color, [ 1, 1, 1, 1 ]);
-                gl.uniform1f(shaderProgram.u_buffer, buffer);
+                gl.uniform1f(shaderProgram.u_buffer, 0.7);
                 gl.drawArrays(gl.TRIANGLES, 0, vertexBuffer.numItems);
 
                 gl.uniform4fv(shaderProgram.u_color, [ 0, 0, 0, 1 ]);
                 gl.uniform1f(shaderProgram.u_buffer, 192 / 256);
-                gl.uniform1f(shaderProgram.u_gamma, gamma * 1.4142 / scale);
+                gl.uniform1f(shaderProgram.u_gamma, 4.0 * 1.4142 / scale);
                 gl.drawArrays(gl.TRIANGLES, 0, vertexBuffer.numItems);
             }
 
