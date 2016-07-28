@@ -23,6 +23,15 @@ ccNetViz = function(canvas, options) {
      Switch SDF text (znbiz)
      */
     nodeStyle.flagSDF  = options.SDF || true;
+    var atlas = {options: {
+                        size: 50,
+                        font_family: "Arial",
+                        start: 1,
+                        end: 256
+                    },
+                 atlas: null
+                }; 
+
 
     if (nodeStyle.label) {
         var s = nodeStyle.label;
@@ -49,7 +58,6 @@ ccNetViz = function(canvas, options) {
 
         var lines = [], curves = [], circles = [];
 
-        // начальная обработка вершин и рёбер графа
         var init = function()  {
             for (var i = 0; i < nodes.length; i++) {
                 nodes[i].index = i;
@@ -60,7 +68,6 @@ ccNetViz = function(canvas, options) {
                     var e = edges[i];
                     (map[e.source.index] || (map[e.source.index] = {}))[e.target.index] = true;
                 }
-                // Определяем какой вид ребра будет между двумя вершинами петля, линия или изогнутая линия
                 for (var i = 0; i < edges.length; i++) {
                     var target, e = edges[i];
 
@@ -122,7 +129,6 @@ ccNetViz = function(canvas, options) {
                 style.texture = texts.texture;
                 return {
                     set: function(v, e, iViI)  {
-                        
                         var x = e.x;
                         var y = e.y;
                         ccNetViz.primitive.vertices(v.position, iViI[0], x, y, x, y, x, y, x, y);
@@ -160,7 +166,6 @@ ccNetViz = function(canvas, options) {
                                 }
                                 dx += width; 
                             }
-
                         } else {
                             var t = texts.get(e.label);
                             var dx = x <= 0.5 ? 0 : -t.width;
@@ -303,7 +308,7 @@ ccNetViz = function(canvas, options) {
     var gl = getContext();
     var extensions = ccNetViz.gl.initExtensions(gl, "OES_standard_derivatives");
     var textures = new ccNetViz.textures(options.onLoad || this.draw);
-    var texts = new ccNetViz.texts(gl, nodeStyle.flagSDF);
+    var texts = new ccNetViz.texts(gl, nodeStyle.flagSDF, atlas);
     var scene = createScene.call(this);
 
 
@@ -319,19 +324,19 @@ ccNetViz = function(canvas, options) {
     var getNodeSize = function(c)  {return getSize(c, this.nodes.length, 0.4);}.bind(this);
 
     var fsLabelsTexture = [
-            "precision mediump float;",
-            "uniform lowp sampler2D texture;",
-            "uniform mediump vec4 color;",
-            "uniform mediump float height_font;",
-            "float u_buffer = 192.0 / 256.0;",
-            "float u_gamma = 4.0 * 1.4142 / height_font;",
-            "varying mediump vec2 tc;",
-            "void main() {",
-            "    float tx=texture2D(texture, tc).r;",
-            "    float a= smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, tx);",
-            "    gl_FragColor=vec4(color.rgb, a * color.a);",
-            "}"
-        ];
+        "precision mediump float;",
+        "uniform lowp sampler2D texture;",
+        "uniform mediump vec4 color;",
+        "uniform mediump float height_font;",
+        "float u_buffer = 192.0 / 256.0;",
+        "float u_gamma = 4.0 * 1.4142 / height_font;",
+        "varying mediump vec2 tc;",
+        "void main() {",
+        "    float tx=texture2D(texture, tc).r;",
+        "    float a= smoothstep(u_buffer - u_gamma, u_buffer + u_gamma, tx);",
+        "    gl_FragColor=vec4(color.rgb, a * color.a);",
+        "}"
+    ];
 
     var fsColorTexture = [
         "precision mediump float;",
@@ -1041,7 +1046,7 @@ ccNetViz.textures = function(onLoad) {
     }
 }
 
-ccNetViz.texts = function(gl, flagSDF) {
+ccNetViz.texts = function(gl, flagSDF, atlas) {
 
     if (flagSDF) { 
         var size;
@@ -1052,12 +1057,6 @@ ccNetViz.texts = function(gl, flagSDF) {
         var x, y, height_font;
 
         var metrics, result;
-        var options = {
-                size: 100,
-                font_family: "Arial",
-                start: 1,
-                end: 256
-            }
 
         this.texture = gl.createTexture();
 
@@ -1072,12 +1071,22 @@ ccNetViz.texts = function(gl, flagSDF) {
             y += height_font;
             height_font = (+/(\d+)px/.exec(font)[1] + 1) / 2;
 
-            options.font_family = /\s(\D\S\w+),/.exec(font)[1];
+            var font_family = /\s(\D\S\w+),/.exec(font)[1];
 
-            result =  ccNetViz.texts.generateSDFatlas(options); 
+            var time = Date.now();
+            if(!atlas.atlas || (!(font_family == atlas.options.font_family)) && font_family) {
+                atlas.options = {
+                        size: 50,
+                        font_family: font_family || "Arial",
+                        start: 1,
+                        end: 256
+                    }
+                atlas.atlas =  ccNetViz.texts.generateSDFatlas(atlas.options); 
+            }
+            console.log(Date.now() - time)
 
-            canvas = result.img;
-            metrics = result.metrics;
+            canvas = atlas.atlas.img;
+            metrics = atlas.atlas.metrics;
             canvas.style.width = canvas.style.height_font = canvas.width + 'px';
             canvas.style.display = "none";
             document.body.appendChild(canvas);
@@ -1514,7 +1523,6 @@ ccNetViz.layout.force = function(nodes, edges) {
 };
 
 /**
- *  The algorithm is taken from an article http://bioinformatics.oxfordjournals.org/content/21/9/2036.full
  *  Author: Alexei Nekrasov (znbiz, E-mail: nekrasov.aleks1992@gmail.com)
  */
 
