@@ -24,7 +24,7 @@ ccNetViz = function(canvas, options) {
      */
     nodeStyle.flagSDF  = options.SDF || true;
     var atlas = {options: {
-                        size: 50,
+                        size: 100,
                         font_family: "Arial",
                         start: 1,
                         end: 256
@@ -1076,7 +1076,7 @@ ccNetViz.texts = function(gl, flagSDF, atlas) {
             var time = Date.now();
             if(!atlas.atlas || (!(font_family == atlas.options.font_family)) && font_family) {
                 atlas.options = {
-                        size: 50,
+                        size: 100,
                         font_family: font_family || "Arial",
                         start: 1,
                         end: 256
