@@ -22,7 +22,11 @@ ccNetViz = function(canvas, options) {
     /*
      Switch SDF text (znbiz)
      */
-    nodeStyle.flagSDF  = options.SDF || true;
+    nodeStyle.flagSDF  = options.SDF || false;
+    nodeStyle.atlasSDF  = options.SDFatlas || null;
+    nodeStyle.metricsSDF = options.SDFmetrics || null;
+   
+                console.log( nodeStyle.atlasSDF)
     var atlas = {options: {
                         size: 100,
                         font_family: "Arial",
@@ -134,6 +138,9 @@ ccNetViz = function(canvas, options) {
                         ccNetViz.primitive.vertices(v.position, iViI[0], x, y, x, y, x, y, x, y);
 
                         if (style.flagSDF) {
+                            /*
+                             Draw the text letter by letter
+                             */
                             var array_meta_char = [];
                             var width = 0; 
                             var height = 0;
@@ -142,12 +149,22 @@ ccNetViz = function(canvas, options) {
                             for(var i = 0; i < e.label.length; i++) {
                                 var char           = e.label[i];
                                 array_meta_char[i] = texts.get(char);
-                                width             += array_meta_char[i].width;
-                                height             = array_meta_char[i].height;
+                                height             = height > array_meta_char[i].height ? height : array_meta_char[i].height;
+                                if(array_meta_char[i].horiAdvance) {
+                                    /*
+                                     We prepare for the atlas coordinates, which generate in our library ccNetViz
+                                     */
+                                    width         += array_meta_char[i].horiAdvance + array_meta_char[i].horiBearingX;
+                                } else {
+                                    /*
+                                     We prepare the coordinates for the atlas, which is created on the server
+                                     */
+                                    width         += array_meta_char[i].width;
+                                }
                             }
 
-                            var dx = x <= 0.5 ? 0 : -width;
-                            var dy = y <= 0.5 ? 0 : -height; 
+                            var dx = x <= 0.5 ? 0 : -width ;
+                            var dy = y <= 0.5 ? height / 2 : -height; 
 
                             for(var i = 0; i < array_meta_char.length; i++) {
                                 width  = array_meta_char[i].width;
@@ -156,7 +173,21 @@ ccNetViz = function(canvas, options) {
                                 right  = array_meta_char[i].right;
                                 bottom = array_meta_char[i].bottom;
                                 top    = array_meta_char[i].top;
+
+
+                                var temp_dy = dy;
+                                if(array_meta_char[i].horiAdvance) {
+                                    /*
+                                     We prepare for the atlas coordinates, which generate in our library ccNetViz
+                                     */
+                                    var horiBearingX = array_meta_char[i].horiBearingX;
+                                    var horiBearingY = array_meta_char[i].horiBearingY;
+                                    var horiAdvance = array_meta_char[i].horiAdvance;
+                                    dy -= (height - horiBearingY);
+                                    dx += horiBearingX      
+                                }
                                 ccNetViz.primitive.vertices(v.relative, iViI[0], dx, dy, width + dx, dy, width + dx, height + dy, dx, height + dy);
+                                dy = temp_dy;
                                 ccNetViz.primitive.vertices(v.textureCoord, iViI[0], left, bottom, right, bottom, right, top, left, top);
                                 ccNetViz.primitive.quad(v.indices, iViI[0], iViI[1]);
                                 if(i < array_meta_char.length - 1){
@@ -164,9 +195,17 @@ ccNetViz = function(canvas, options) {
                                     iViI[1] += 6;
                                     ccNetViz.primitive.vertices(v.position, iViI[0], x, y, x, y, x, y, x, y);
                                 }
-                                dx += width; 
+
+                                if(array_meta_char[i].horiAdvance) {
+                                    dx += horiAdvance; 
+                                } else {
+                                    dx += width;
+                                }
                             }
                         } else {
+                            /*
+                             Draw text on one texture
+                             */
                             var t = texts.get(e.label);
                             var dx = x <= 0.5 ? 0 : -t.width;
                             var dy = y <= 0.5 ? 0 : -t.height; 
@@ -308,7 +347,7 @@ ccNetViz = function(canvas, options) {
     var gl = getContext();
     var extensions = ccNetViz.gl.initExtensions(gl, "OES_standard_derivatives");
     var textures = new ccNetViz.textures(options.onLoad || this.draw);
-    var texts = new ccNetViz.texts(gl, nodeStyle.flagSDF, atlas);
+    var texts = new ccNetViz.texts(gl, nodeStyle.flagSDF, nodeStyle.atlasSDF, nodeStyle.metricsSDF, atlas);
     var scene = createScene.call(this);
 
 
@@ -1046,15 +1085,19 @@ ccNetViz.textures = function(onLoad) {
     }
 }
 
-ccNetViz.texts = function(gl, flagSDF, atlas) {
+ccNetViz.texts = function(gl, flagSDF, atlasSDF, metricsSDF, atlas) {
 
     if (flagSDF) { 
+        /*
+         Draw a text character by character. Each character has its own texture
+         */
         var size;
 
         var canvas = document.createElement("canvas");
 
         var rendered, texts;
-        var x, y, height_font;
+        var x, y, height_font, scale;
+        var buffer;
 
         var metrics, result;
 
@@ -1073,39 +1116,71 @@ ccNetViz.texts = function(gl, flagSDF, atlas) {
 
             var font_family = /\s(\D\S\w+),/.exec(font)[1];
 
-            var time = Date.now();
-            if(!atlas.atlas || (!(font_family == atlas.options.font_family)) && font_family) {
-                atlas.options = {
-                        size: 100,
-                        font_family: font_family || "Arial",
-                        start: 1,
-                        end: 256
-                    }
-                atlas.atlas =  ccNetViz.texts.generateSDFatlas(atlas.options); 
+            if(!(atlasSDF && metricsSDF)) {
+                /*
+                 We prepare for the atlas coordinates, which generate in our library ccNetViz
+                 */
+                if(!atlas.atlas || (!(font_family == atlas.options.font_family)) && font_family) {
+                    atlas.options = {
+                            size: 50,
+                            font_family: font_family || "Arial",
+                            start: 1,
+                            end: 256
+                        }
+                    atlas.atlas =  ccNetViz.texts.generateSDFatlas(atlas.options); 
+                }
+                canvas = atlas.atlas.img;
+                metrics = atlas.atlas.metrics;
+            } else {
+                /*
+                 We prepare the coordinates for the atlas, which is created on the server
+                 */
+                canvas = atlasSDF;
+                metrics = metricsSDF;
+                buffer = metrics.buffer;
             }
-            console.log(Date.now() - time)
-
-            canvas = atlas.atlas.img;
-            metrics = atlas.atlas.metrics;
             canvas.style.width = canvas.style.height_font = canvas.width + 'px';
             canvas.style.display = "none";
             document.body.appendChild(canvas);
             size = canvas.width;
+            scale = 1;
         };
 
         this.get = function(text)  {
             var result = texts[text];
             if (!result) {
                 var char = metrics.chars[text];
-                texts[text] = result = {
-                    width: (char[4] - char[4] / 3) / 50 * height_font,
-                    height: char[1] / 50 * height_font,
-                    left: (char[5] + char[2] + char[4] / 6) / size,
-                    right: (char[5] + char[2] + char[4] - char[4] / 6) / size,
-                    top: char[6] / size,
-                    bottom: (char[6] + char[1]) / size
+                if(!(atlasSDF && metricsSDF)) {
+                    texts[text] = result = {
+                        width: (char[4] - char[4] / 3) / 25 * height_font,
+                        height: char[1] / 25 * height_font,
+                        left: (char[5] + char[2] + char[4] / 6) / size,
+                        right: (char[5] + char[2] + char[4] - char[4] / 6) / size,
+                        top: char[6] / size,
+                        bottom: (char[6] + char[1]) / size
+                    };
+                } else {
+                    var width = char[0] + buffer * 2;
+                    var height = char[1] + buffer * 2;
+                    var horiBearingX = char[2];
+                    var horiBearingY = char[3];
+                    var horiAdvance = char[4];
+                    var posX = char[5];
+                    var posY = char[6];
+                    console.log(char)
+                    texts[text] = result = {
+                        horiAdvance: horiAdvance,
+                        horiBearingX: horiBearingX,
+                        horiBearingY: horiBearingY,
+                        width: width,
+                        height: height,
+                        left: (posX) / canvas.width,
+                        right: (posX + width) / canvas.width,
+                        top: (posY) / canvas.height,
+                        bottom: (posY+height) / canvas.height
+                    };
                 };
-            }
+            } 
             return result;
         };
 
@@ -1121,6 +1196,9 @@ ccNetViz.texts = function(gl, flagSDF, atlas) {
 
         }.bind(this);
     } else {
+        /*
+         Draw text on one texture
+         */
         var size = 1024
 
         var canvas = document.createElement("canvas");
