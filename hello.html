@@ -14,14 +14,14 @@
 <body>
   <canvas id="container"/>
   <script> 
-    var image = new Image();
-    image.src = "OpenSans-Regular.png";
-    image.onload = function() {    
+    // var image = new Image();
+    // image.src = "OpenSans-Regular.png";
+    // image.onload = function() {    
         var graph = new ccNetViz(document.getElementById('container'), {
 
-          SDF: true,
-          SDFatlas: image,
-          SDFmetrics: metrics,
+          // SDF: true,
+          // SDFatlas: "OpenSans-Regular.png",
+          // SDFmetrics: metrics,
           styles :  {
               background: { color: "rgb(255, 255, 255)" },  //background color of canvas, default: "rgb(255, 255, 255)"
               node: { //predefined style
@@ -32,7 +32,12 @@
                 label: {
                   hideSize: 16,   //minimum size (height) for the label to be displayed
                   color: "rgb(0, 0, 0)",  //label color, default: "rgb(120, 120, 120)"
-                  font: "15px Arial, Helvetica, sans-serif" //label font, default: "11px Arial, Helvetica, sans-serif"
+                  font: "15px Arial, Helvetica, sans-serif", //label font, default: "11px Arial, Helvetica, sans-serif"
+                  SDF: {
+                    SDF: true,
+                    SDFatlas: "OpenSans-Regular.png", // "null" - if the image to be generated
+                    SDFmetrics: metrics // "null" - if the image to be generated
+                  }
                 }
               },
               edge: {   //predefined style
@@ -278,7 +283,7 @@
           edges[i].source = nodes[edges[i].source]
           edges[i].target = nodes[edges[i].target]
         }
-        
+
         var time = Date.now();
         graph.set(nodes, edges, "force");
         graph.draw();
@@ -289,7 +294,7 @@
         graph.set(nodes, edges, "force");
         graph.draw();
         console.log(Date.now() - time)
-    }
+    // }
   </script>
 </body>
 </html>

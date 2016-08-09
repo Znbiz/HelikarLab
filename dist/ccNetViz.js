@@ -22,11 +22,11 @@ ccNetViz = function(canvas, options) {
     /*
      Switch SDF text (znbiz)
      */
-    nodeStyle.flagSDF  = options.SDF || false;
-    nodeStyle.atlasSDF  = options.SDFatlas || null;
-    nodeStyle.metricsSDF = options.SDFmetrics || null;
+    // nodeStyle.flagSDF  = options.SDF || false;
+    // nodeStyle.atlasSDF  = options.SDFatlas || null;
+    
+    // nodeStyle.metricsSDF = options.SDFmetrics || null;
    
-                console.log( nodeStyle.atlasSDF)
     var atlas = {options: {
                         size: 100,
                         font_family: "Arial",
@@ -41,6 +41,20 @@ ccNetViz = function(canvas, options) {
         var s = nodeStyle.label;
         s.color = s.color || "rgb(120, 120, 120)";
         s.font = s.font || "11px Arial, Helvetica, sans-serif";
+        /*
+         Switch SDF text (znbiz)
+         */
+        
+        if(s.SDF) {
+            s.flagSDF = s.SDF.SDF || false;
+            s.SDFatlas = s.SDF.SDFatlas || false;
+            if(s.SDFatlas) {
+                var image = new Image();
+                image.src = s.SDFatlas;
+                s.atlasSDF = image;
+            }
+            s.metricsSDF = s.SDF.SDFmetrics || null;
+        }
     }
 
     var edgeStyle = options.styles.edge = options.styles.edge || {};
@@ -129,14 +143,14 @@ ccNetViz = function(canvas, options) {
         if (nodeStyle.label) {
             texts.clear();
             scene.labels.set(gl, options.styles, textures, nodes, function(style)  {
-                texts.setFont(style.font);
+                // it was before: texts.setFont(style.font);
+                texts.setFont(style);
                 style.texture = texts.texture;
                 return {
                     set: function(v, e, iViI)  {
                         var x = e.x;
                         var y = e.y;
                         ccNetViz.primitive.vertices(v.position, iViI[0], x, y, x, y, x, y, x, y);
-
                         if (style.flagSDF) {
                             /*
                              Draw the text letter by letter
@@ -347,7 +361,7 @@ ccNetViz = function(canvas, options) {
     var gl = getContext();
     var extensions = ccNetViz.gl.initExtensions(gl, "OES_standard_derivatives");
     var textures = new ccNetViz.textures(options.onLoad || this.draw);
-    var texts = new ccNetViz.texts(gl, nodeStyle.flagSDF, nodeStyle.atlasSDF, nodeStyle.metricsSDF, atlas);
+    var texts = new ccNetViz.texts(gl, nodeStyle.label.flagSDF, nodeStyle.label.atlasSDF, nodeStyle.label.metricsSDF, atlas);
     var scene = createScene.call(this);
 
 
@@ -605,7 +619,7 @@ ccNetViz = function(canvas, options) {
             "                        + transform * vec4(position, 0,  1);",
             "   tc = textureCoord;",
             "}"
-        ], (nodeStyle.flagSDF ? fsLabelsTexture : fsColorTexture), function(c)  {
+        ], (nodeStyle.label.flagSDF ? fsLabelsTexture : fsColorTexture), function(c)  {
             if (!getNodeSize(c)) return true;
             gl.uniform1f(c.shader.uniforms.offset, 0.5 * c.nodeSize);
             var height_font = +/(\d+)px/.exec(c.style.font)[1] + 1; 
@@ -944,11 +958,13 @@ ccNetViz.primitive = function(gl, baseStyle, styleProperty, vs, fs, bind) {
             /*
              Increase the buffer for writing text letter by letter (znbiz)
              */
-            var k = 0;
-            if(baseStyle.flagSDF) {
-                for(var i = 0; i < part.length; i++) {
-                    if(part[i].label) {
-                        k +=  part[i].label.length;
+            var k = 0; 
+            if(baseStyle.label) {
+                if(baseStyle.label.flagSDF) {
+                    for(var i = 0; i < part.length; i++) {
+                        if(part[i].label) {
+                            k +=  part[i].label.length;
+                        }
                     }
                 }
             }
@@ -1108,7 +1124,8 @@ ccNetViz.texts = function(gl, flagSDF, atlasSDF, metricsSDF, atlas) {
             height_font = x = y = 0;
         };
 
-        this.setFont = function(font)  {
+        this.setFont = function(style)  {
+            var font = style.font;
             rendered[font] = texts = rendered[font] || {};
             x = 0;
             y += height_font;
@@ -1167,7 +1184,6 @@ ccNetViz.texts = function(gl, flagSDF, atlasSDF, metricsSDF, atlas) {
                     var horiAdvance = char[4];
                     var posX = char[5];
                     var posY = char[6];
-                    console.log(char)
                     texts[text] = result = {
                         horiAdvance: horiAdvance,
                         horiBearingX: horiBearingX,
@@ -1222,8 +1238,8 @@ ccNetViz.texts = function(gl, flagSDF, atlasSDF, metricsSDF, atlas) {
             context.clearRect(0, 0, size, size);
             height = x = y = 0;
         };
-
-        this.setFont = function(font)  {
+        this.setFont = function(style)  {
+            var font = style.font;
             rendered[font] = texts = rendered[font] || {};
             context.font = font;
             x = 0;
