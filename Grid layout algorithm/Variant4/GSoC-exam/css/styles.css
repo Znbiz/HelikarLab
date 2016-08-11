@@ -1,0 +1,49 @@
+body {
+    margin: 0;
+    color: #787878;
+    font: 11px Arial, Helvetica, sans-serif;
+}
+
+a {
+    color: #39c;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #069;
+}
+
+dl {
+    margin: 3px 0;
+}
+
+dt, dd {
+    display: inline-block;
+}
+
+dd {
+    margin: 0;
+}
+
+h1 {
+    font-size: 13px;
+}
+
+.content {
+    width: 1016px;
+    margin: 16px auto;
+}
+
+.container {
+    display: inline-block;
+    width: 500px;
+}
+
+.container:last-child {
+    float: right;
+}
+
+.container canvas {
+    width: 100%;
+    height: 500px;
+}
