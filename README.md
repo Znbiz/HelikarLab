@@ -9,3 +9,9 @@ GSoC
 - 21.06.2016 - Create Drawing Text with Signed Distance Fields [code] (https://github.com/Znbiz/HelikarLab/tree/master/Generator%20SDF)
 - 30.06.2016 - Create Drawing Text with Signed Distance Fields. Using WebGL to calculate SDF. [code] (https://github.com/Znbiz/HelikarLab/tree/master/Generator%20SDF)
 - 04.07.2016 - Fixed critical error in the generator SDF. Partially optimized algorithm SDF. Added in the generator SDF: selection size serving of characters of simultaneously processed in the GPU.
+- 18.07.2016 - Added to the library ccNetViz display text using SDF.
+- 20.07.2016 - Improved text rendering library by using SDF algorithm
+- 26.07.2016 - Changed the fragment shader to improve the texture processing SDF
+- 29.07.2016 - Added the ability to the library draw the  name tops with different styles using SDF textures
+- 2.08.2016  - Added the ability to use the library in advance generated atlases
+- 8.08.2016  - Changed method of specifying pre-generated atlases.
