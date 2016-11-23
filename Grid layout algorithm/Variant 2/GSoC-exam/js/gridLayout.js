@@ -5,6 +5,36 @@
 function gridLayout() {}
 
 gridLayout.calculate = function(nodes, edges, size) {
+    /**
+     * Быстрое глубокое клоирование
+     * @type {Object}
+     */
+    var cloner = {
+        _clone: function _clone(obj) {
+            if (obj instanceof Array) {
+                var out = [];
+                for (var i = 0, len = obj.length; i < len; i++) {
+                    var value = obj[i];
+                    out[i] = (value !== null && typeof value === "object") ? _clone(value) : value;
+                }
+            } else {
+                var out = {};
+                for (var key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        var value = obj[key];
+                        out[key] = (value !== null && typeof value === "object") ? _clone(value) : value;
+                    }
+                }
+            }
+            return out;
+        },
+
+        clone: function(it) {
+            return this._clone({
+            it: it
+            }).it;
+        }
+    };
 
     /*
         if the weight between the vertices less than "const_dmax", then select the minimum value 
@@ -66,7 +96,7 @@ gridLayout.calculate = function(nodes, edges, size) {
      * @return {array} New layout
      */ 
     function Operator(R, number_label, p){
-        var R_temp = JSON.parse(JSON.stringify(R));
+        var R_temp = cloner.clone(R);
         R_temp[number_label] = p;
         return R_temp;
     }
@@ -156,7 +186,7 @@ gridLayout.calculate = function(nodes, edges, size) {
      * @return {array} new an array of vertex coordinates 
      */
     function RandomLayoutR(R){
-        var R_temp = JSON.parse(JSON.stringify(R));
+        var R_temp = cloner.clone(R);
         var map = {};
         for(var i = 0; i < R.length; i++){
             while (true) {
@@ -183,7 +213,7 @@ gridLayout.calculate = function(nodes, edges, size) {
      * @return {array} new an array of vertex coordinates 
      */
     function Neighbor(R, p){
-        var R_1 = JSON.parse(JSON.stringify(R));
+        var R_1 = cloner.clone(R);
         var map_vacant = VacantPoint(R_1);
         for(var i = 0; i < R_1.length; i++) {
             var e = R_1[i];
@@ -274,7 +304,7 @@ gridLayout.calculate = function(nodes, edges, size) {
      * @return {array} Returns a new layout and its cost
      */
     function LocalMin(R_temp, matrix_weight, number_nodes_label){
-        R = JSON.parse(JSON.stringify(R_temp));
+        R = cloner.clone(R_temp);
 
         var f_0 = WeightR (R, matrix_weight);
         var vacant_point = VacantPoint(R);

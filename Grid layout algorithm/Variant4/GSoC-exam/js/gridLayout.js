@@ -6,13 +6,39 @@ function gridLayout() {}
  */
 
 gridLayout.calculate = function(nodes, edges, size) {
+    var cloner = {
+        _clone: function _clone(obj) {
+            if (obj instanceof Array) {
+                var out = [];
+                for (var i = 0, len = obj.length; i < len; i++) {
+                    var value = obj[i];
+                    out[i] = (value !== null && typeof value === "object") ? _clone(value) : value;
+                }
+            } else {
+                var out = {};
+                for (var key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        var value = obj[key];
+                        out[key] = (value !== null && typeof value === "object") ? _clone(value) : value;
+                    }
+                }
+            }
+            return out;
+        },
+
+        clone: function(it) {
+            return this._clone({
+            it: it
+            }).it;
+        }
+    };
     /**
      * Each node number is put into correspondence with an array of numbers of neighboring vertex
      * @param {array} number_nodes_label - an array where each vertex name is associated its number
      */
     function Neighbors(number_nodes_label){
         var mas = [];
-        var edges_temp = JSON.parse(JSON.stringify(edges));
+        var edges_temp = cloner.clone(edges);
 
         /*
         Remove the are multiples of ribs and loops
@@ -71,7 +97,7 @@ gridLayout.calculate = function(nodes, edges, size) {
                 }
             }
         }
-        queue_neighbors = JSON.parse(JSON.stringify(queue_temp));
+        queue_neighbors = cloner.clone(queue_temp);
         if(queue_neighbors.length){
             DijkstrasAlgorithm(visited, d, k+1, neighbors,queue_neighbors, path);
         }
